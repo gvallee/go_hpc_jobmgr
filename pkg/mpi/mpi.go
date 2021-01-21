@@ -86,3 +86,4 @@ func Detect() (*implem.Info, error) {
 
 	return mpiInfo, nil
 }
+

@@ -5,12 +5,19 @@
 
 package implem
 
+import (
+	"fmt"
+
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/mpich"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
+)
+
 const (
 	// OMPI is the identifier for Open MPI
-	OMPI = "openmpi"
+	OMPI = openmpi.ID
 
 	// MPICH is the identifier for MPICH
-	MPICH = "mpich"
+	MPICH = mpich.ID
 )
 
 // Info gathers all data about a specific MPI implementation
@@ -32,4 +39,26 @@ func IsMPI(i *Info) bool {
 	}
 
 	return false
+}
+
+// Load figures out the details about a specific implementation of MPI so it can be used later on.
+// Users have the option to specify:
+// - the install directory, then the function figures out the implementation and version
+// - the implementation (e.g., openmpi) and the function figures out where it is installed
+// - a few other combinations of these to provide a flexible way to handle various implementation of MPI
+// If no suitable implementation can be found, the function returns an error
+func (i *Info) Load() error {
+	if i.InstallDir != "" && (i.ID == "" || i.Version == "") {
+		var err error
+		i.ID, i.Version, err = openmpi.DetectFromDir(i.InstallDir)
+		if err == nil {
+			return nil
+		}
+		i.ID, i.Version, err = mpich.DetectFromDir(i.InstallDir)
+		if err == nil {
+			return nil
+		}
+		return fmt.Errorf("unable to detect MPI implementation from %s", i.InstallDir)
+	}
+	return nil
 }

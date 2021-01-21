@@ -5,6 +5,8 @@
 
 package mpich
 
+import "fmt"
+
 const (
 	// VersionTag is the tag used to refer to the MPI version in MPICH template(s)
 	VersionTag = "MPICHVERSION"
@@ -12,16 +14,23 @@ const (
 	URLTag = "MPICHURL"
 	// TarballTag is the tag used to refer to the MPI tarball in MPICH template(s)
 	TarballTag = "MPICHTARBALL"
+	// ID is the internal ID for MPICH
+	ID = "mpich"
 )
 
-// MPICHGetExtraMpirunArgs returns the extra mpirun arguments required by MPICH for a specific configuration
-func MPICHGetExtraMpirunArgs() []string {
+// GetExtraMpirunArgs returns the extra mpirun arguments required by MPICH for a specific configuration
+func GetExtraMpirunArgs() []string {
 	var extraArgs []string
 	return extraArgs
 }
 
-// MPICHGetConfigureExtraArgs returns the extra arguments required to configure MPICH
-func MPICHGetConfigureExtraArgs() []string {
+// GetConfigureExtraArgs returns the extra arguments required to configure MPICH
+func GetConfigureExtraArgs() []string {
 	var extraArgs []string
 	return extraArgs
+}
+
+// DetectFromDir tries to figure out which version of MPICH is installed in a given directory
+func DetectFromDir(dir string) (string, string, error) {
+	return "", "", fmt.Errorf("not implemented")
 }
