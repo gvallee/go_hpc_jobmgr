@@ -1,4 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
+// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -29,7 +30,9 @@ const (
 	PrunID = "prun"
 )
 
+// Environment represents the job's environment to use
 type Environment struct {
+	// InstallDir is where software packages needed for the job are installed
 	InstallDir string
 
 	mpiBin string

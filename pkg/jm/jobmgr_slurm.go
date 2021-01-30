@@ -1,4 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
+// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -21,7 +22,7 @@ import (
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
 )
 
-// LoadSlurm is the function used by our job management framework to figure out if Slurm can be used and
+// SlurmDetect is the function used by our job management framework to figure out if Slurm can be used and
 // if so return a JM structure with all the "function pointers" to interact with Slurm through our generic
 // API.
 func SlurmDetect() (bool, JM) {
