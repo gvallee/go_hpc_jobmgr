@@ -69,7 +69,10 @@ func SlurmLoad(jm *JM, sysCfg *sys.Config) error {
 }
 
 func getJobOutFilenamePrefix(j *job.Job) string {
-	return "host-" + j.HostCfg.ID + "-" + j.HostCfg.Version
+	if j.HostCfg != nil {
+		return "job-" + j.HostCfg.ID + "-" + j.HostCfg.Version
+	}
+	return "job"
 }
 
 func getJobOutputFilePath(j *job.Job, sysCfg *sys.Config) string {
@@ -84,34 +87,16 @@ func getJobErrorFilePath(j *job.Job, sysCfg *sys.Config) string {
 	return path
 }
 
-func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
-	// Sanity checks
-	if j == nil {
-		return fmt.Errorf("undefined job")
-	}
-
-	// Some sanity checks
-	if j.HostCfg == nil {
-		return fmt.Errorf("undefined host configuration")
-	}
-
-	if sysCfg.ScratchDir == "" {
-		return fmt.Errorf("undefined scratch directory")
-	}
-
-	if j.App.BinPath == "" {
-		return fmt.Errorf("application binary is undefined")
-	}
-
+func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) {
 	// Create the batch script
 	err := TempFile(j, sysCfg)
 	if err != nil {
-		return fmt.Errorf("unable to create temporary file: %s", err)
+		return "", fmt.Errorf("unable to create temporary file: %s", err)
 	}
 
 	// TempFile is supposed to set the path to the batch script
 	if j.BatchScript == "" {
-		return fmt.Errorf("Batch script path is undefined")
+		return "", fmt.Errorf("Batch script path is undefined")
 	}
 
 	scriptText := "#!/bin/bash\n#\n"
@@ -130,10 +115,19 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 	scriptText += slurm.ScriptCmdPrefix + " --error=" + getJobErrorFilePath(j, sysCfg) + "\n"
 	scriptText += slurm.ScriptCmdPrefix + " --output=" + getJobOutputFilePath(j, sysCfg) + "\n"
 
+	return scriptText, nil
+}
+
+func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
+	scriptText, err := generateBatchScriptContent(j, sysCfg)
+	if err != nil {
+		return err
+	}
+
 	// Add the mpirun command
 	mpirunPath := filepath.Join(j.MPICfg.Implem.InstallDir, "bin", "mpirun")
-	mpirunArgs, err := mpi.GetMpirunArgs(j.HostCfg, &j.App, sysCfg)
-	if err != nil {
+	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(j.HostCfg, &j.App, sysCfg)
+	if errMpiArgs != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
 	scriptText += "\n" + mpirunPath + " " + strings.Join(mpirunArgs, " ") + "\n"
@@ -144,6 +138,48 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 	}
 
 	return nil
+}
+
+func setupNonMpiJob(j *job.Job, sysCfg *sys.Config) error {
+	if j.BatchScript == "" {
+		return fmt.Errorf("undefined job script path")
+	}
+	scriptText, err := generateBatchScriptContent(j, sysCfg)
+	if err != nil {
+		return err
+	}
+	scriptText += "\n" + j.App.BinPath + "\n"
+
+	err = ioutil.WriteFile(j.BatchScript, []byte(scriptText), 0644)
+	if err != nil {
+		return fmt.Errorf("unable to write to file %s: %s", j.BatchScript, err)
+	}
+
+	log.Printf("-> Job script successfully created: %s", j.BatchScript)
+
+	return nil
+}
+
+func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
+	// Sanity checks
+	if j == nil {
+		return fmt.Errorf("undefined job")
+	}
+
+	if sysCfg.ScratchDir == "" {
+		return fmt.Errorf("undefined scratch directory")
+	}
+
+	if j.App.BinPath == "" {
+		return fmt.Errorf("application binary is undefined")
+	}
+
+	// Some sanity checks, required to set everything up for MPI
+	if j.HostCfg == nil {
+		return setupNonMpiJob(j, sysCfg)
+	}
+
+	return setupMpiJob(j, sysCfg)
 }
 
 // SlurmSubmit prepares the batch script necessary to start a given job.
@@ -162,6 +198,9 @@ func SlurmSubmit(j *job.Job, sysCfg *sys.Config) (advexec.Advcmd, error) {
 	err := generateJobScript(j, sysCfg)
 	if err != nil {
 		return cmd, fmt.Errorf("unable to generate Slurm script: %s", err)
+	}
+	if j.BatchScript == "" {
+		return cmd, fmt.Errorf("undefined batch script path")
 	}
 	cmd.CmdArgs = append(cmd.CmdArgs, j.BatchScript)
 
