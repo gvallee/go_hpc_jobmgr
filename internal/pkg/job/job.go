@@ -53,11 +53,11 @@ type Job struct {
 	// ErrBuffer is a buffer with the stderr of the job
 	ErrBuffer bytes.Buffer
 
-	// GetOutput is the function to call to gather the output of the application based on the use of a given job manager
-	GetOutput GetOutputFn
+	// internalGetOutput is the function to call to gather the output of the application based on the use of a given job manager
+	internalGetOutput GetOutputFn
 
-	// GetError is the function to call to gather stderr of the application based on the use of a given job manager
-	GetError GetErrorFn
+	// internalGetError is the function to call to gather stderr of the application based on the use of a given job manager
+	internalGetError GetErrorFn
 
 	// Args is a set of arguments to be used for launching the job
 	Args []string
@@ -67,4 +67,24 @@ type Job struct {
 
 	// Partition is the name of the partition to use with the jobmgr (optional)
 	Partition string
+}
+
+// GetOutput is the function to call to gather the output (stdout) of the application after execution of the job
+func (j *Job) GetOutput(sysCfg *sys.Config) string {
+	return j.internalGetOutput(j, sysCfg)
+}
+
+// GetError is the function to call to gather stderr of the application after execution of the job
+func (j *Job) GetError(sysCfg *sys.Config) string {
+	return j.internalGetError(j, sysCfg)
+}
+
+// SetOutputFn sets the internal function specific to the job manager to get the output of a job
+func (j *Job) SetOutputFn(fn GetOutputFn) {
+	j.internalGetOutput = fn
+}
+
+// SetErrorFn sets the internal function specific to the job manager to get stderr of a job
+func (j *Job) SetErrorFn(fn GetErrorFn) {
+	j.internalGetError = fn
 }

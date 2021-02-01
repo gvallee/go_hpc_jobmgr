@@ -20,13 +20,13 @@ import (
 type Native struct {
 }
 
-// NativeGetOutput retrieves the application's output after the completion of a job
-func NativeGetOutput(j *job.Job, sysCfg *sys.Config) string {
+// nativeGetOutput retrieves the application's output after the completion of a job
+func nativeGetOutput(j *job.Job, sysCfg *sys.Config) string {
 	return j.OutBuffer.String()
 }
 
-// NativeGetError retrieves the error messages from an application after the completion of a job
-func NativeGetError(j *job.Job, sysCfg *sys.Config) string {
+// nativeGetError retrieves the error messages from an application after the completion of a job
+func nativeGetError(j *job.Job, sysCfg *sys.Config) string {
 	return j.ErrBuffer.String()
 }
 
@@ -65,23 +65,30 @@ func prepareStdSubmit(cmd *advexec.Advcmd, j *job.Job, env *Environment, sysCfg 
 	return nil
 }
 
-// NativeSubmit is the function to call to submit a job through the native job manager
-func NativeSubmit(j *job.Job, sysCfg *sys.Config) (advexec.Advcmd, error) {
+// nativeSubmit is the function to call to submit a job through the native job manager
+func nativeSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 	var cmd advexec.Advcmd
+	var res advexec.Result
 
 	if j.App.BinPath == "" {
-		return cmd, fmt.Errorf("application binary is undefined")
+		res.Err = fmt.Errorf("application binary is undefined")
+		return res
 	}
 
 	err := prepareMPISubmit(&cmd, j, sysCfg)
 	if err != nil {
-		return cmd, fmt.Errorf("unable to prepare MPI job: %s", err)
+		res.Err = fmt.Errorf("unable to prepare MPI job: %s", err)
+		return res
 	}
 
-	j.GetOutput = NativeGetOutput
-	j.GetError = NativeGetError
+	j.SetOutputFn(nativeGetOutput)
+	j.SetErrorFn(nativeGetError)
 
-	return cmd, nil
+	return cmd.Run()
+}
+
+func nativeLoad(jobmgr *JM, sysCfg *sys.Config) error {
+	return nil
 }
 
 // NativeDetect is the function used by our job management framework to figure out if mpirun should be used directly.
@@ -90,7 +97,8 @@ func NativeSubmit(j *job.Job, sysCfg *sys.Config) (advexec.Advcmd, error) {
 func NativeDetect() (bool, JM) {
 	var jm JM
 	jm.ID = NativeID
-	jm.Submit = NativeSubmit
+	jm.submitJM = nativeSubmit
+	jm.loadJM = nativeLoad
 
 	// This is the default job manager, i.e., mpirun so we do not check anything, just return this component.
 	// If the component is selected and mpirun not correctly installed, the framework will pick it up later.

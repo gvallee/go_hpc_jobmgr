@@ -6,55 +6,73 @@
 package jm
 
 import (
+	"flag"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 )
 
+var partition = flag.String("partition", "", "Name of Slurm partition to use to run the test")
+var scratchDir = flag.String("scratch", "", "Scratch directory to use to execute the test")
+
+func isDateCmdOutput(output string) bool {
+	tokens := strings.Split(output, " ")
+	if tokens[0] == "Mon" || tokens[0] == "Tue" || tokens[0] == "Wed" || tokens[0] == "Thu" || tokens[0] == "Fri" || tokens[0] == "Sat" || tokens[0] == "Sun" {
+		return true
+	}
+	return false
+}
+
+// TestSlurmSubmit tests detecting, setting and submitting a basic Slurm job,
+// assuming the system as Slurm installed (otherwise the test is skipped).
+// To run the test on a specific partition, set the environment variable
+// 'GO_HPC_JOBMGR_TEST_SLURM_PARTITION' to the target partition
 func TestSlurmSubmit(t *testing.T) {
 	failed := false
 
-	loaded, _ := SlurmDetect()
+	loaded, jobmgr := SlurmDetect()
 	if !loaded {
 		t.Skip("slurm cannot be used on this platform")
 	}
 
 	var j job.Job
 	var err error
+	j.App.Name = "date"
 	j.App.BinPath, err = exec.LookPath("date")
 	if err != nil {
 		t.Fatalf("unable to find path to 'date' binnary")
 	}
 
 	var sysCfg sys.Config
-	installDir, err := ioutil.TempDir("", "")
+	installDir, err := ioutil.TempDir(*scratchDir, "install")
 	if err != nil {
 		t.Fatalf("failed to create temporary directory: %s", err)
 	}
 	defer os.RemoveAll(installDir)
-	sysCfg.ScratchDir, err = ioutil.TempDir("", "")
+	sysCfg.ScratchDir, err = ioutil.TempDir(*scratchDir, "")
 	if err != nil {
 		t.Fatalf("unable to create scratch directory: %s", err)
 	}
 	defer os.RemoveAll(sysCfg.ScratchDir)
 	j.BatchScript = filepath.Join(sysCfg.ScratchDir, "test_run_script.sh")
+	j.Partition = *partition
 
-	launcher, err := SlurmSubmit(&j, &sysCfg)
+	err = slurmLoad(&jobmgr, &sysCfg)
 	if err != nil {
-		t.Fatalf("test failed: %s", err)
+		t.Fatalf("unable to load Slurm: %s", err)
 	}
 
-	if launcher.BinPath != "sbatch" {
-		failed = true
-		t.Logf("wrong launcher returned")
+	res := slurmSubmit(&j, &jobmgr, &sysCfg)
+	if res.Err != nil {
+		t.Fatalf("test failed: %s, stdout:%s, stderr:%s", res.Err, res.Stdout, res.Stderr)
 	}
 
-	t.Logf("Batch script: %s", j.BatchScript)
 	// Display the content of the batch script
 	if !failed {
 		f, err := os.Open(j.BatchScript)
@@ -72,6 +90,11 @@ func TestSlurmSubmit(t *testing.T) {
 		defer f.Close()
 	}
 
+	output := j.GetOutput(&sysCfg)
+	if output == "" || !isDateCmdOutput(output) {
+		t.Fatalf("invalid output: %s", output)
+	}
+
 	/*
 		err = job.CleanUp()
 		if err != nil {
@@ -83,7 +106,6 @@ func TestSlurmSubmit(t *testing.T) {
 	if failed {
 		t.Fatalf("test failed")
 	}
-	t.Logf("Slurm launcher - cmd: %s; cmd args: %s\n", launcher.Cmd, launcher.CmdArgs)
 	t.Logf("Slurm batch script: %s\n", j.BatchScript)
 
 }

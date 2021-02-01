@@ -7,34 +7,48 @@
 package launcher
 
 import (
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"testing"
 
-	"github.com/gvallee/go_hpc_jobmgr/pkg/app"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/jm"
 )
 
-func SlurmLaunchTest(t *testing.T) {
-	var appInfo app.Info
+var partition = flag.String("partition", "", "Name of Slurm partition to use to run the test")
+var scratchDir = flag.String("scratch", "", "Scratch directory to use to execute the test")
+
+func TestSlurmLaunch(t *testing.T) {
+	var j job.Job
 	var err error
-	appInfo.BinPath, err = exec.LookPath("date")
-	appInfo.Name = "date"
+	j.App.BinPath, err = exec.LookPath("date")
+	if err != nil {
+		t.Fatalf("unable to find path to 'date' binnary")
+	}
+	j.App.Name = "date"
+	j.Partition = *partition
 
 	sysCfg, jobmgr, err := Load()
 	if err != nil {
 		t.Fatalf("unable to load the launcher: %s", err)
 	}
+	sysCfg.ScratchDir, err = ioutil.TempDir(*scratchDir, "")
+	if err != nil {
+		t.Fatalf("unable to create temporary directory: %s", err)
+	}
+	defer os.RemoveAll(sysCfg.ScratchDir)
 
 	if jobmgr.ID != jm.SlurmID {
 		t.Fatalf("Slurm not available, skipping")
 	}
 
-	res, _ := Run(&appInfo, nil, nil, &jobmgr, &sysCfg, nil)
-	if err != nil {
-		t.Fatalf("unable to execute Slurm test: %s", err)
+	res, execRes := Run(&j, nil, &jobmgr, &sysCfg, nil)
+	if !res.Pass {
+		t.Fatalf("execution failed: %s, %s, %s %s", execRes.Err, execRes.Stdout, execRes.Stderr, res.Note)
 	}
 
-	if !res.Pass {
-		t.Fatalf("execution failed: %s", res.Note)
-	}
+	fmt.Printf("Note: %s\n", res.Note)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/slurm"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
+	"github.com/gvallee/go_util/pkg/util"
 )
 
 // SlurmDetect is the function used by our job management framework to figure out if Slurm can be used and
@@ -27,22 +28,23 @@ import (
 // API.
 func SlurmDetect() (bool, JM) {
 	var jm JM
+	var err error
 
-	_, err := exec.LookPath("sbatch")
+	jm.BinPath, err = exec.LookPath("sbatch")
 	if err != nil {
 		log.Println("* Slurm not detected")
 		return false, jm
 	}
 
 	jm.ID = SlurmID
-	jm.Submit = SlurmSubmit
-	jm.Load = SlurmLoad
+	jm.submitJM = slurmSubmit
+	jm.loadJM = slurmLoad
 
 	return true, jm
 }
 
-// SlurmGetOutput reads the content of the Slurm output file that is associated to a job
-func SlurmGetOutput(j *job.Job, sysCfg *sys.Config) string {
+// slurmGetOutput reads the content of the Slurm output file that is associated to a job
+func slurmGetOutput(j *job.Job, sysCfg *sys.Config) string {
 	outputFile := getJobOutputFilePath(j, sysCfg)
 	output, err := ioutil.ReadFile(outputFile)
 	if err != nil {
@@ -52,8 +54,8 @@ func SlurmGetOutput(j *job.Job, sysCfg *sys.Config) string {
 	return string(output)
 }
 
-// SlurmGetError reads the content of the Slurm error file that is associated to a job
-func SlurmGetError(j *job.Job, sysCfg *sys.Config) string {
+// slurmGetError reads the content of the Slurm error file that is associated to a job
+func slurmGetError(j *job.Job, sysCfg *sys.Config) string {
 	errorFile := getJobErrorFilePath(j, sysCfg)
 	errorTxt, err := ioutil.ReadFile(errorFile)
 	if err != nil {
@@ -63,8 +65,10 @@ func SlurmGetError(j *job.Job, sysCfg *sys.Config) string {
 	return string(errorTxt)
 }
 
-// SlurmLoad is the function called when trying to load a JM module
-func SlurmLoad(jm *JM, sysCfg *sys.Config) error {
+// slurmLoad is the function called when trying to load a JM module
+func slurmLoad(jobmgr *JM, sysCfg *sys.Config) error {
+	// jobmgr.BinPath has been set during Detect()
+	jobmgr.CmdArgs = append(jobmgr.CmdArgs, "-W") // We always wait until the submitted job terminates
 	return nil
 }
 
@@ -88,12 +92,6 @@ func getJobErrorFilePath(j *job.Job, sysCfg *sys.Config) string {
 }
 
 func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) {
-	// Create the batch script
-	err := TempFile(j, sysCfg)
-	if err != nil {
-		return "", fmt.Errorf("unable to create temporary file: %s", err)
-	}
-
 	// TempFile is supposed to set the path to the batch script
 	if j.BatchScript == "" {
 		return "", fmt.Errorf("Batch script path is undefined")
@@ -137,6 +135,8 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 		return fmt.Errorf("unable to write to file %s: %s", j.BatchScript, err)
 	}
 
+	fmt.Printf("batch script ready: %s\n", j.BatchScript)
+
 	return nil
 }
 
@@ -144,6 +144,7 @@ func setupNonMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	if j.BatchScript == "" {
 		return fmt.Errorf("undefined job script path")
 	}
+	fmt.Printf("Creating %s\n", j.BatchScript)
 	scriptText, err := generateBatchScriptContent(j, sysCfg)
 	if err != nil {
 		return err
@@ -174,6 +175,14 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 		return fmt.Errorf("application binary is undefined")
 	}
 
+	// Create the batch script
+	if j.BatchScript == "" {
+		err := TempFile(j, sysCfg)
+		if err != nil {
+			return fmt.Errorf("unable to create temporary file: %s", err)
+		}
+	}
+
 	// Some sanity checks, required to set everything up for MPI
 	if j.HostCfg == nil {
 		return setupNonMpiJob(j, sysCfg)
@@ -182,30 +191,33 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 	return setupMpiJob(j, sysCfg)
 }
 
-// SlurmSubmit prepares the batch script necessary to start a given job.
+// slurmSubmit prepares the batch script necessary to start a given job.
 //
 // Note that a script does not need any specific environment to be submitted
-func SlurmSubmit(j *job.Job, sysCfg *sys.Config) (advexec.Advcmd, error) {
+func slurmSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 	var cmd advexec.Advcmd
-	cmd.BinPath = "sbatch"
-	cmd.CmdArgs = append(cmd.CmdArgs, "-W") // We always wait until the submitted job terminates
+	var resExec advexec.Result
 
 	// Sanity checks
-	if j == nil {
-		return cmd, fmt.Errorf("job is undefined")
+	if j == nil || !util.FileExists(jobmgr.BinPath) {
+		resExec.Err = fmt.Errorf("job is undefined")
+		return resExec
 	}
 
 	err := generateJobScript(j, sysCfg)
 	if err != nil {
-		return cmd, fmt.Errorf("unable to generate Slurm script: %s", err)
+		resExec.Err = fmt.Errorf("unable to generate Slurm script: %s", err)
+		return resExec
 	}
 	if j.BatchScript == "" {
-		return cmd, fmt.Errorf("undefined batch script path")
+		resExec.Err = fmt.Errorf("undefined batch script path")
+		return resExec
 	}
+	cmd.BinPath = jobmgr.BinPath
+	cmd.CmdArgs = append(cmd.CmdArgs, jobmgr.CmdArgs...)
 	cmd.CmdArgs = append(cmd.CmdArgs, j.BatchScript)
 
-	j.GetOutput = SlurmGetOutput
-	j.GetError = SlurmGetError
-
-	return cmd, nil
+	j.SetOutputFn(slurmGetOutput)
+	j.SetErrorFn(slurmGetError)
+	return cmd.Run()
 }
