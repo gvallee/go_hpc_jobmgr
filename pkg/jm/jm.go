@@ -1,4 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
+// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -29,7 +30,9 @@ const (
 	PrunID = "prun"
 )
 
+// Environment represents the job's environment to use
 type Environment struct {
+	// InstallDir is where software packages needed for the job are installed
 	InstallDir string
 
 	mpiBin string
@@ -41,20 +44,23 @@ type Loader interface {
 }
 
 // LoadFn loads a specific job manager once detected
-type LoadFn func(*JM, *sys.Config) error
+type LoadFn func(jobmgr *JM, sysCfg *sys.Config) error
 
 // SubmitFn is a "function pointer" that lets us job a new job
-type SubmitFn func(*job.Job, *sys.Config) (advexec.Advcmd, error)
+type SubmitFn func(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result
 
 // JM is the structure representing a specific JM
 type JM struct {
 	// ID identifies which job manager has been detected on the system
 	ID string
 
-	Load LoadFn
+	loadJM LoadFn
 
-	// Submit is the function to submit a job through the current job manager
-	Submit SubmitFn
+	submitJM SubmitFn
+
+	BinPath string
+
+	CmdArgs []string
 }
 
 // Detect figures out which job manager must be used on the system and return a
@@ -78,11 +84,6 @@ func Detect() JM {
 	}
 
 	return comp
-}
-
-// Load is the function to use to load the JM component
-func Load(jm *JM) error {
-	return nil
 }
 
 // TempFile creates a temporary file that is used to store a batch script
@@ -115,4 +116,14 @@ func TempFile(j *job.Job, sysCfg *sys.Config) error {
 	}
 
 	return nil
+}
+
+// Load sets data specific to the job managers that was previously detected
+func (jobmgr *JM) Load(sysCfg *sys.Config) error {
+	return jobmgr.loadJM(jobmgr, sysCfg)
+}
+
+// Submit executes a job with a job manager that was previously detected and loaded
+func (jobmgr *JM) Submit(j *job.Job, sysCfg *sys.Config) advexec.Result {
+	return jobmgr.submitJM(j, jobmgr, sysCfg)
 }

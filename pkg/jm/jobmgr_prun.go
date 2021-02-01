@@ -19,28 +19,31 @@ import (
 type Prun struct {
 }
 
-// PrunGetOutput retrieves the application's output after the completion of a job
-func PrunGetOutput(j *job.Job, sysCfg *sys.Config) string {
+// prunGetOutput retrieves the application's output after the completion of a job
+func prunGetOutput(j *job.Job, sysCfg *sys.Config) string {
 	return j.OutBuffer.String()
 }
 
-// PrunGetError retrieves the error messages from an application after the completion of a job
-func PrunGetError(j *job.Job, sysCfg *sys.Config) string {
+// prunGetError retrieves the error messages from an application after the completion of a job
+func prunGetError(j *job.Job, sysCfg *sys.Config) string {
 	return j.ErrBuffer.String()
 }
 
 // PrunSubmit is the function to call to submit a job through the native job manager
-func PrunSubmit(j *job.Job, sysCfg *sys.Config) (advexec.Advcmd, error) {
+func PrunSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 	var cmd advexec.Advcmd
+	var res advexec.Result
 	var err error
 
 	if j.App.BinPath == "" {
-		return cmd, fmt.Errorf("application binary is undefined")
+		res.Err = fmt.Errorf("application binary is undefined")
+		return res
 	}
 
 	cmd.BinPath, err = exec.LookPath("prun")
 	if err != nil {
-		return cmd, fmt.Errorf("prun not found")
+		res.Err = fmt.Errorf("prun not found")
+		return res
 	}
 
 	for _, a := range j.Args {
@@ -60,10 +63,9 @@ func PrunSubmit(j *job.Job, sysCfg *sys.Config) (advexec.Advcmd, error) {
 	//cmd.Env = append([]string{"LD_LIBRARY_PATH=" + newLDPath}, os.Environ()...)
 	//cmd.Env = append([]string{"PATH=" + newPath}, sycmd.Env...)
 
-	j.GetOutput = PrunGetOutput
-	j.GetError = PrunGetError
-
-	return cmd, nil
+	j.SetOutputFn(prunGetOutput)
+	j.SetErrorFn(prunGetError)
+	return cmd.Run()
 }
 
 // PrunDetect is the function used by our job management framework to figure out if mpirun should be used directly.
@@ -79,7 +81,7 @@ func PrunDetect() (bool, JM) {
 	}
 
 	jm.ID = PrunID
-	jm.Submit = PrunSubmit
+	jm.submitJM = PrunSubmit
 
 	// This is the default job manager, i.e., mpirun so we do not check anything, just return this component.
 	// If the component is selected and mpirun not correctly installed, the framework will pick it up later.
