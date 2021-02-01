@@ -9,8 +9,8 @@ package jm
 import (
 	"testing"
 
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_util/pkg/util"
 )
 

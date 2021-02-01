@@ -14,8 +14,8 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/jm"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 )
 
 var partition = flag.String("partition", "", "Name of Slurm partition to use to run the test")
@@ -42,7 +42,7 @@ func TestSlurmLaunch(t *testing.T) {
 	defer os.RemoveAll(sysCfg.ScratchDir)
 
 	if jobmgr.ID != jm.SlurmID {
-		t.Fatalf("Slurm not available, skipping")
+		t.Skipf("Slurm not available, skipping")
 	}
 
 	res, execRes := Run(&j, nil, &jobmgr, &sysCfg, nil)

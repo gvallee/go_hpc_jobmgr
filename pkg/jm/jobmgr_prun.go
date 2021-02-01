@@ -1,4 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -11,8 +12,8 @@ import (
 	"os/exec"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 )
 
 // Prun is the structure representing the native job manager (i.e., directly use mpirun)

@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 )
 
 var partition = flag.String("partition", "", "Name of Slurm partition to use to run the test")
