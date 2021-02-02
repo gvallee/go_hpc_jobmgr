@@ -55,7 +55,7 @@ func parseOmpiInfoOutputForVersion(output string) (string, error) {
 
 // DetectFromDir tries to figure out which version of OpenMPI is installed in a given directory
 func DetectFromDir(dir string) (string, string, error) {
-	targetBin := filepath.Join(dir, "bin", "ompi-info")
+	targetBin := filepath.Join(dir, "bin", "ompi_info")
 	if !util.FileExists(targetBin) {
 		return "", "", fmt.Errorf("%s does not exist, not an OpenMPI implementation", targetBin)
 	}
