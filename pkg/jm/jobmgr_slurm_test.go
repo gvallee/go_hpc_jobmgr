@@ -16,11 +16,15 @@ import (
 	"testing"
 
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/implem"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
+	"github.com/gvallee/go_util/pkg/util"
 )
 
 var partition = flag.String("partition", "", "Name of Slurm partition to use to run the test")
 var scratchDir = flag.String("scratch", "", "Scratch directory to use to execute the test")
+var mpiDir = flag.String("mpi", "", "Directory where MPI is installed")
 
 func isDateCmdOutput(output string) bool {
 	tokens := strings.Split(output, " ")
@@ -30,13 +34,7 @@ func isDateCmdOutput(output string) bool {
 	return false
 }
 
-// TestSlurmSubmit tests detecting, setting and submitting a basic Slurm job,
-// assuming the system as Slurm installed (otherwise the test is skipped).
-// To run the test on a specific partition, set the environment variable
-// 'GO_HPC_JOBMGR_TEST_SLURM_PARTITION' to the target partition
-func TestSlurmSubmit(t *testing.T) {
-	failed := false
-
+func setupSlurm(t *testing.T) (JM, job.Job, sys.Config) {
 	loaded, jobmgr := SlurmDetect()
 	if !loaded {
 		t.Skip("slurm cannot be used on this platform")
@@ -68,6 +66,12 @@ func TestSlurmSubmit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to load Slurm: %s", err)
 	}
+
+	return jobmgr, j, sysCfg
+}
+
+func runAndCheckJob(t *testing.T, jobmgr JM, j job.Job, sysCfg sys.Config) {
+	failed := false
 
 	res := slurmSubmit(&j, &jobmgr, &sysCfg)
 	if res.Err != nil {
@@ -108,5 +112,34 @@ func TestSlurmSubmit(t *testing.T) {
 		t.Fatalf("test failed")
 	}
 	t.Logf("Slurm batch script: %s\n", j.BatchScript)
+}
 
+// TestSlurmSubmitNoMPI tests detecting, setting and submitting a basic Slurm job,
+// assuming the system as Slurm installed (otherwise the test is skipped).
+// To run the test on a specific partition, set the environment variable
+// 'GO_HPC_JOBMGR_TEST_SLURM_PARTITION' to the target partition
+func TestSlurmSubmitNoMPI(t *testing.T) {
+	jobmgr, j, sysCfg := setupSlurm(t)
+	runAndCheckJob(t, jobmgr, j, sysCfg)
+}
+
+func TestSlurmSubmitMPI(t *testing.T) {
+	// If MPI is not available, skip the test
+	mpirunPath := filepath.Join(*mpiDir, "bin", "mpirun")
+	if !util.FileExists(mpirunPath) {
+		t.Skip("mpirun not available, skipping")
+	}
+	var mpiImplem implem.Info
+	mpiImplem.InstallDir = *mpiDir
+	err := mpiImplem.Load()
+	if err != nil {
+		t.Fatalf("unable to detect the MPI implementation in %s: %s", *mpiDir, err)
+	}
+
+	jobmgr, j, sysCfg := setupSlurm(t)
+	mpiCfg := new(mpi.Config)
+	mpiCfg.Implem = mpiImplem
+	j.MPICfg = mpiCfg
+
+	runAndCheckJob(t, jobmgr, j, sysCfg)
 }

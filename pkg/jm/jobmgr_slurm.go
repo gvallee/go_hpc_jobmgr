@@ -128,7 +128,8 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	if errMpiArgs != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
-	scriptText += "\n" + mpirunPath + " " + strings.Join(mpirunArgs, " ") + "\n"
+	scriptText += "\n" + mpirunPath + " " + strings.Join(mpirunArgs, " ")
+	scriptText += "\n" + j.App.BinPath + "\n"
 
 	err = ioutil.WriteFile(j.BatchScript, []byte(scriptText), 0644)
 	if err != nil {
