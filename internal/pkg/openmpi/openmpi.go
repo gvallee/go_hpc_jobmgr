@@ -1,4 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_util/pkg/util"
 )
@@ -31,7 +33,7 @@ const (
 )
 
 // GetExtraMpirunArgs returns the set of arguments required for the mpirun command for the target platform
-func GetExtraMpirunArgs(sys *sys.Config) []string {
+func GetExtraMpirunArgs(sys *sys.Config, netCfg *network.Config) []string {
 	var extraArgs []string
 	// By default we always prefer UCX rather than openib
 	extraArgs = append(extraArgs, "--mca")
@@ -40,6 +42,9 @@ func GetExtraMpirunArgs(sys *sys.Config) []string {
 	extraArgs = append(extraArgs, "--mca")
 	extraArgs = append(extraArgs, "pml")
 	extraArgs = append(extraArgs, "ucx")
+	if netCfg != nil && netCfg.Device != "" {
+		extraArgs = append(extraArgs, "-x UCX_NET_DEVICES="+netCfg.Device)
+	}
 	return extraArgs
 }
 

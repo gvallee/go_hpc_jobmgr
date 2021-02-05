@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/slurm"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
@@ -122,12 +123,16 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 		return err
 	}
 
+	netCfg := new(network.Config)
+	netCfg.Device = j.Device
+
 	// Add the mpirun command
 	mpirunPath := filepath.Join(j.MPICfg.Implem.InstallDir, "bin", "mpirun")
-	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg)
+	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg, netCfg)
 	if errMpiArgs != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
+
 	scriptText += "\n" + mpirunPath + " "
 	if j.NP > 0 {
 		scriptText += fmt.Sprintf("-np %d ", j.NP)

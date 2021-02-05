@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
@@ -31,7 +32,7 @@ func nativeGetError(j *job.Job, sysCfg *sys.Config) string {
 	return j.ErrBuffer.String()
 }
 
-func prepareMPISubmit(cmd *advexec.Advcmd, j *job.Job, sysCfg *sys.Config) error {
+func prepareMPISubmit(cmd *advexec.Advcmd, j *job.Job, sysCfg *sys.Config, netCfg *network.Config) error {
 	var err error
 	cmd.BinPath = filepath.Join(j.MPICfg.Implem.InstallDir, "bin", "mpirun")
 	if j.NP > 0 {
@@ -39,7 +40,7 @@ func prepareMPISubmit(cmd *advexec.Advcmd, j *job.Job, sysCfg *sys.Config) error
 		cmd.CmdArgs = append(cmd.CmdArgs, strconv.Itoa(j.NP))
 	}
 
-	mpirunArgs, err := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg)
+	mpirunArgs, err := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg, netCfg)
 	if err != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
@@ -76,7 +77,10 @@ func nativeSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 		return res
 	}
 
-	err := prepareMPISubmit(&cmd, j, sysCfg)
+	netCfg := new(network.Config)
+	netCfg.Device = j.Device
+
+	err := prepareMPISubmit(&cmd, j, sysCfg, netCfg)
 	if err != nil {
 		res.Err = fmt.Errorf("unable to prepare MPI job: %s", err)
 		return res

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/gvallee/go_exec/pkg/manifest"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/app"
@@ -47,13 +48,13 @@ func GetPathToMpirun(mpiCfg *implem.Info) (string, error) {
 }
 
 // GetMpirunArgs returns the arguments required by a mpirun
-func GetMpirunArgs(myHostMPICfg *implem.Info, app *app.Info, sysCfg *sys.Config) ([]string, error) {
+func GetMpirunArgs(myHostMPICfg *implem.Info, app *app.Info, sysCfg *sys.Config, netCfg *network.Config) ([]string, error) {
 	var extraArgs []string
 
 	// We really do not want to do this but MPICH is being picky about args so for now, it will do the job.
 	switch myHostMPICfg.ID {
 	case implem.OMPI:
-		extraArgs = append(extraArgs, openmpi.GetExtraMpirunArgs(sysCfg)...)
+		extraArgs = append(extraArgs, openmpi.GetExtraMpirunArgs(sysCfg, netCfg)...)
 	}
 
 	return extraArgs, nil
@@ -86,4 +87,3 @@ func Detect() (*implem.Info, error) {
 
 	return mpiInfo, nil
 }
-

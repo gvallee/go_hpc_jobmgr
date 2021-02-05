@@ -25,6 +25,7 @@ import (
 var partition = flag.String("partition", "", "Name of Slurm partition to use to run the test")
 var scratchDir = flag.String("scratch", "", "Scratch directory to use to execute the test")
 var mpiDir = flag.String("mpi", "", "Directory where MPI is installed")
+var netDevice = flag.String("net", "", "Network device to use")
 
 func isDateCmdOutput(output string) bool {
 	tokens := strings.Split(output, " ")
@@ -146,6 +147,7 @@ func TestSlurmSubmitMPI(t *testing.T) {
 	mpiCfg.Implem = mpiImplem
 	j.MPICfg = mpiCfg
 	j.NP = 2
+	j.Device = *netDevice
 
 	runAndCheckJob(t, jobmgr, j, sysCfg)
 }

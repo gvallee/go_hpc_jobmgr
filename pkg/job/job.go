@@ -63,6 +63,9 @@ type Job struct {
 
 	// Partition is the name of the partition to use with the jobmgr (optional)
 	Partition string
+
+	// Device is the network device to use to run the job
+	Device string
 }
 
 // GetOutput is the function to call to gather the output (stdout) of the application after execution of the job
