@@ -34,7 +34,7 @@ func isDateCmdOutput(output string) bool {
 	return false
 }
 
-func setupSlurm(t *testing.T) (JM, job.Job, sys.Config) {
+func setupSlurm(t *testing.T) (JM, job.Job, sys.Config, string) {
 	loaded, jobmgr := SlurmDetect()
 	if !loaded {
 		t.Skip("slurm cannot be used on this platform")
@@ -53,12 +53,11 @@ func setupSlurm(t *testing.T) (JM, job.Job, sys.Config) {
 	if err != nil {
 		t.Fatalf("failed to create temporary directory: %s", err)
 	}
-	defer os.RemoveAll(installDir)
 	sysCfg.ScratchDir, err = ioutil.TempDir(*scratchDir, "")
 	if err != nil {
 		t.Fatalf("unable to create scratch directory: %s", err)
 	}
-	defer os.RemoveAll(sysCfg.ScratchDir)
+	t.Logf("Scratch directory is %s", sysCfg.ScratchDir)
 	j.BatchScript = filepath.Join(sysCfg.ScratchDir, "test_run_script.sh")
 	j.Partition = *partition
 
@@ -67,7 +66,7 @@ func setupSlurm(t *testing.T) (JM, job.Job, sys.Config) {
 		t.Fatalf("unable to load Slurm: %s", err)
 	}
 
-	return jobmgr, j, sysCfg
+	return jobmgr, j, sysCfg, installDir
 }
 
 func runAndCheckJob(t *testing.T, jobmgr JM, j job.Job, sysCfg sys.Config) {
@@ -119,7 +118,10 @@ func runAndCheckJob(t *testing.T, jobmgr JM, j job.Job, sysCfg sys.Config) {
 // To run the test on a specific partition, set the environment variable
 // 'GO_HPC_JOBMGR_TEST_SLURM_PARTITION' to the target partition
 func TestSlurmSubmitNoMPI(t *testing.T) {
-	jobmgr, j, sysCfg := setupSlurm(t)
+	jobmgr, j, sysCfg, installDir := setupSlurm(t)
+	defer os.RemoveAll(installDir)
+	defer os.RemoveAll(sysCfg.ScratchDir)
+
 	runAndCheckJob(t, jobmgr, j, sysCfg)
 }
 
@@ -136,10 +138,14 @@ func TestSlurmSubmitMPI(t *testing.T) {
 		t.Fatalf("unable to detect the MPI implementation in %s: %s", *mpiDir, err)
 	}
 
-	jobmgr, j, sysCfg := setupSlurm(t)
+	jobmgr, j, sysCfg, installDir := setupSlurm(t)
+	defer os.RemoveAll(installDir)
+	defer os.RemoveAll(sysCfg.ScratchDir)
+
 	mpiCfg := new(mpi.Config)
 	mpiCfg.Implem = mpiImplem
 	j.MPICfg = mpiCfg
+	j.NP = 2
 
 	runAndCheckJob(t, jobmgr, j, sysCfg)
 }
