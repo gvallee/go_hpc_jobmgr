@@ -75,9 +75,9 @@ func slurmLoad(jobmgr *JM, sysCfg *sys.Config) error {
 
 func getJobOutFilenamePrefix(j *job.Job) string {
 	if j.MPICfg != nil {
-		return "job-" + j.MPICfg.Implem.ID + "-" + j.MPICfg.Implem.Version
+		return j.Name + j.MPICfg.Implem.ID + "-" + j.MPICfg.Implem.Version
 	}
-	return "job"
+	return j.Name
 }
 
 func getJobOutputFilePath(j *job.Job, sysCfg *sys.Config) string {
