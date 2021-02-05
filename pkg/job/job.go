@@ -11,7 +11,6 @@ import (
 
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/app"
-	"github.com/gvallee/go_hpc_jobmgr/pkg/implem"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
 )
 
@@ -40,9 +39,6 @@ type Job struct {
 
 	// BatchScript is the path to the script required to start a job (optional)
 	BatchScript string
-
-	// HostCfg is the MPI configuration to use on the host
-	HostCfg *implem.Info
 
 	// App is the path to the application's binary, i.e., the binary to start
 	App app.Info

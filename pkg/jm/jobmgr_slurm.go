@@ -73,8 +73,8 @@ func slurmLoad(jobmgr *JM, sysCfg *sys.Config) error {
 }
 
 func getJobOutFilenamePrefix(j *job.Job) string {
-	if j.HostCfg != nil {
-		return "job-" + j.HostCfg.ID + "-" + j.HostCfg.Version
+	if j.MPICfg != nil {
+		return "job-" + j.MPICfg.Implem.ID + "-" + j.MPICfg.Implem.Version
 	}
 	return "job"
 }
@@ -124,11 +124,15 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 
 	// Add the mpirun command
 	mpirunPath := filepath.Join(j.MPICfg.Implem.InstallDir, "bin", "mpirun")
-	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(j.HostCfg, &j.App, sysCfg)
+	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg)
 	if errMpiArgs != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
-	scriptText += "\n" + mpirunPath + " " + strings.Join(mpirunArgs, " ") + "\n"
+	scriptText += "\n" + mpirunPath + " "
+	if j.NP > 0 {
+		scriptText += fmt.Sprintf("-np %d ", j.NP)
+	}
+	scriptText += " " + strings.Join(mpirunArgs, " ") + " " + j.App.BinPath + "\n"
 
 	err = ioutil.WriteFile(j.BatchScript, []byte(scriptText), 0644)
 	if err != nil {
@@ -184,7 +188,7 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 	}
 
 	// Some sanity checks, required to set everything up for MPI
-	if j.HostCfg == nil {
+	if j.MPICfg == nil {
 		return setupNonMpiJob(j, sysCfg)
 	}
 
