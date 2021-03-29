@@ -7,13 +7,9 @@
 package launcher
 
 import (
-	"bytes"
-	"context"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"time"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_exec/pkg/results"
@@ -27,29 +23,6 @@ import (
 type Info struct {
 	// Cmd represents the command to launch a job
 	Cmd advexec.Advcmd
-}
-
-// PrepareLaunchCmd interacts with a job manager backend to figure out how to launch a job
-func prepareLaunchCmd(j *job.Job, jobmgr *jm.JM, sysCfg *sys.Config) (advexec.Advcmd, error) {
-	var cmd advexec.Advcmd
-
-	// Sanity checks
-	if j == nil || jobmgr == nil || sysCfg == nil {
-		return cmd, fmt.Errorf("invalid parameter(s)")
-	}
-
-	cmd.Ctx, cmd.CancelFn = context.WithTimeout(context.Background(), advexec.CmdTimeout*time.Minute)
-	cmd.Cmd = exec.CommandContext(cmd.Ctx, jobmgr.BinPath, jobmgr.CmdArgs...)
-	cmd.Cmd.Stdout = &j.OutBuffer
-	cmd.Cmd.Stderr = &j.ErrBuffer
-	//cmd.Cmd.Env = jm.Env
-
-	res := jobmgr.Submit(j, sysCfg)
-	if res.Err != nil {
-		return cmd, fmt.Errorf("failed to submit the job: %s, stdout:%s, stderr:%s", res.Err, res.Stdout, res.Stderr)
-	}
-
-	return cmd, nil
 }
 
 // Load gathers all the details to start running experiments or create containers for apps
@@ -128,79 +101,17 @@ func Run(j *job.Job, hostMPI *mpi.Config, jobmgr *jm.JM, sysCfg *sys.Config, arg
 	}
 
 	// We submit the job
-	var submitCmd advexec.Advcmd
-	submitCmd, execRes.Err = prepareLaunchCmd(j, jobmgr, sysCfg)
-	if execRes.Err != nil {
-		execRes.Err = fmt.Errorf("failed to prepare the launch command: %s", execRes.Err)
-		expRes.Pass = false
-		return expRes, execRes
-	}
-
-	var stdout, stderr bytes.Buffer
-	submitCmd.Cmd.Stdout = &stdout
-	submitCmd.Cmd.Stderr = &stderr
-	defer submitCmd.CancelFn()
-
 	execRes = jobmgr.Submit(j, sysCfg)
-
-	/*
-		err := submitCmd.Cmd.Run()
-		// Get the command out/err
-		execRes.Stderr = stderr.String()
-		execRes.Stdout = stdout.String()
-		execRes.Err = err
-		// And add the job out/err (for when we actually use a real job manager such as Slurm)
-		execRes.Stdout += newjob.GetOutput(&newjob, sysCfg)
-		execRes.Stderr += newjob.GetError(&newjob, sysCfg)
-	*/
-
 	if execRes.Err != nil {
 		// The command simply failed and the Go runtime caught it
 		expRes.Pass = false
 		errorMsg = fmt.Sprintf("[ERROR] Command failed - stdout: %s - stderr: %s - err: %s\n", execRes.Stdout, execRes.Stderr, execRes.Err)
-		log.Printf(errorMsg)
-	}
-	if submitCmd.Ctx.Err() == context.DeadlineExceeded {
-		// The command timed out
-		expRes.Pass = false
-		errorMsg = fmt.Sprintf("[ERROR] Command timed out - stdout: %s - stderr: %s\n", execRes.Stdout, execRes.Stderr)
-		log.Printf(errorMsg)
+		log.Printf("%s", errorMsg)
 	}
 
 	if !expRes.Pass {
 		expRes.Note = errorMsg
 	}
-
-	/*
-		if expRes.Pass {
-			// Regex to catch errors where mpirun returns 0 but is known to have failed because displaying the help message
-			var re = regexp.MustCompile(`^(\n?)Usage:`)
-			if re.Match(stdout.Bytes()) {
-				// mpirun actually failed, exited with 0 as return code but displayed the usage message (so nothing really ran)
-				expRes.Pass = false
-				log.Printf("[ERROR] mpirun failed and returned help messafe - stdout: %s - stderr: %s\n", stdout.String(), stderr.String())
-			}
-			if !expectedOutput(execRes.Stdout, execRes.Stderr, appInfo, &newjob) {
-				// The output is NOT the expected output
-				expRes.Pass = false
-				log.Printf("[ERROR] Run succeeded but output is not matching expectation - stdout: %s - stderr: %s\n", stdout.String(), stderr.String())
-			}
-		}
-
-		// For any error, we save details to give a chance to the user to analyze what happened
-		if !expRes.Pass {
-			if hostMPI != nil && containerMPI != nil {
-				err = SaveErrorDetails(&hostMPI.Implem, &containerMPI.Implem, sysCfg, &execRes)
-				if err != nil {
-					// We only log the error because the most important error is the error
-					// that happened while executing the command
-					log.Printf("impossible to cleanly handle error: %s", err)
-				}
-			} else {
-				log.Println("Not an MPI job, not saving error details")
-			}
-		}
-	*/
 
 	return expRes, execRes
 }
