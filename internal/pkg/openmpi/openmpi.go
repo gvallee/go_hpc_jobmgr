@@ -33,8 +33,7 @@ const (
 )
 
 // GetExtraMpirunArgs returns the set of arguments required for the mpirun command for the target platform
-func GetExtraMpirunArgs(sys *sys.Config, netCfg *network.Config) []string {
-	var extraArgs []string
+func GetExtraMpirunArgs(sys *sys.Config, netCfg *network.Config, extraArgs []string) []string {
 	// By default we always prefer UCX rather than openib
 	extraArgs = append(extraArgs, "--mca")
 	extraArgs = append(extraArgs, "btl")

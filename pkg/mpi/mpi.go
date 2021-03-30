@@ -25,6 +25,9 @@ import (
 type Config struct {
 	// Implem gathers information about the MPI implementation to use
 	Implem implem.Info
+
+	// UserMpirunArgs is a list of extra arguments defined by the user to pass to the mpirun commands
+	UserMpirunArgs []string
 }
 
 // GetPathToMpirun returns the path to mpirun based a configuration of MPI
@@ -48,13 +51,13 @@ func GetPathToMpirun(mpiCfg *implem.Info) (string, error) {
 }
 
 // GetMpirunArgs returns the arguments required by a mpirun
-func GetMpirunArgs(myHostMPICfg *implem.Info, app *app.Info, sysCfg *sys.Config, netCfg *network.Config) ([]string, error) {
+func GetMpirunArgs(myHostMPICfg *implem.Info, app *app.Info, sysCfg *sys.Config, netCfg *network.Config, mpirunArgs []string) ([]string, error) {
 	var extraArgs []string
 
 	// We really do not want to do this but MPICH is being picky about args so for now, it will do the job.
 	switch myHostMPICfg.ID {
 	case implem.OMPI:
-		extraArgs = append(extraArgs, openmpi.GetExtraMpirunArgs(sysCfg, netCfg)...)
+		extraArgs = append(extraArgs, openmpi.GetExtraMpirunArgs(sysCfg, netCfg, mpirunArgs)...)
 	}
 
 	return extraArgs, nil

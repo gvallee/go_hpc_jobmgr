@@ -128,7 +128,7 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 
 	// Add the mpirun command
 	mpirunPath := filepath.Join(j.MPICfg.Implem.InstallDir, "bin", "mpirun")
-	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg, netCfg)
+	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg, netCfg, j.MPICfg.UserMpirunArgs)
 	if errMpiArgs != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}

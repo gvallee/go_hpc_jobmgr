@@ -40,7 +40,7 @@ func prepareMPISubmit(cmd *advexec.Advcmd, j *job.Job, sysCfg *sys.Config, netCf
 		cmd.CmdArgs = append(cmd.CmdArgs, strconv.Itoa(j.NP))
 	}
 
-	mpirunArgs, err := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg, netCfg)
+	mpirunArgs, err := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg, netCfg, j.MPICfg.UserMpirunArgs)
 	if err != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
