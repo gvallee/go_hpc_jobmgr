@@ -91,6 +91,7 @@ func Run(j *job.Job, hostMPI *mpi.Config, jobmgr *jm.JM, sysCfg *sys.Config, arg
 	if hostMPI != nil {
 		j.MPICfg = new(mpi.Config)
 		j.MPICfg.Implem = hostMPI.Implem
+		j.MPICfg.UserMpirunArgs = hostMPI.UserMpirunArgs
 	}
 
 	if len(args) == 0 {
