@@ -104,6 +104,7 @@ func NativeDetect() (bool, JM) {
 	jm.ID = NativeID
 	jm.submitJM = nativeSubmit
 	jm.loadJM = nativeLoad
+	jm.jobStatusJM = nil // Not implemented yet
 
 	// This is the default job manager, i.e., mpirun so we do not check anything, just return this component.
 	// If the component is selected and mpirun not correctly installed, the framework will pick it up later.

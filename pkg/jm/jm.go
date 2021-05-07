@@ -38,6 +38,35 @@ type Environment struct {
 	mpiBin string
 }
 
+type JobStatus struct {
+	Code int
+	Str  string
+}
+
+const (
+	JOB_STATUS_UNKNOWN = iota
+	JOB_STATUS_QUEUED
+	JOB_STATUS_RUNNING
+	JOB_STATUS_DONE
+)
+
+var StatusUnknown = JobStatus{
+	Code: JOB_STATUS_UNKNOWN,
+	Str:  "UNKNOWN",
+}
+var StatusQueued = JobStatus{
+	Code: JOB_STATUS_QUEUED,
+	Str:  "QUEUED",
+}
+var StatusRunning = JobStatus{
+	Code: JOB_STATUS_RUNNING,
+	Str:  "RUNNING",
+}
+var StatusDone = JobStatus{
+	Code: JOB_STATUS_DONE,
+	Str:  "DONE",
+}
+
 // Loader checks whether a giv job manager is applicable or not
 type Loader interface {
 	Load() bool
@@ -49,6 +78,8 @@ type LoadFn func(jobmgr *JM, sysCfg *sys.Config) error
 // SubmitFn is a "function pointer" that lets us job a new job
 type SubmitFn func(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result
 
+type JobStatusFn func(jobmgr *JM, jobIDs []int) ([]JobStatus, error)
+
 // JM is the structure representing a specific JM
 type JM struct {
 	// ID identifies which job manager has been detected on the system
@@ -57,6 +88,8 @@ type JM struct {
 	loadJM LoadFn
 
 	submitJM SubmitFn
+
+	jobStatusJM JobStatusFn
 
 	BinPath string
 
@@ -126,4 +159,8 @@ func (jobmgr *JM) Load(sysCfg *sys.Config) error {
 // Submit executes a job with a job manager that was previously detected and loaded
 func (jobmgr *JM) Submit(j *job.Job, sysCfg *sys.Config) advexec.Result {
 	return jobmgr.submitJM(j, jobmgr, sysCfg)
+}
+
+func (jobmgr *JM) JobStatus(jobIDs []int) ([]JobStatus, error) {
+	return jobmgr.jobStatusJM(jobmgr, jobIDs)
 }

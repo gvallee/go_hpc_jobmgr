@@ -24,6 +24,58 @@ import (
 	"github.com/gvallee/go_util/pkg/util"
 )
 
+func getSlurmJobStatus(jobID int) (JobStatus, error) {
+	var cmd advexec.Advcmd
+	var err error
+	cmd.BinPath, err = exec.LookPath("squeue")
+	if err != nil {
+		return StatusUnknown, err
+	}
+	cmd.CmdArgs = []string{"-j", strconv.Itoa(jobID), "--format=\"%t\""}
+	res := cmd.Run()
+	if res.Err != nil {
+		// if it fails it might mean the job is done
+		res.Stderr = strings.TrimRight(res.Stderr, "\n")
+		if strings.HasSuffix(res.Stderr, "Invalid job id specified") {
+			return StatusDone, nil
+		}
+		return StatusUnknown, res.Err
+	}
+
+	if len(res.Stdout) != 2 {
+		return StatusUnknown, fmt.Errorf("unexpected output: %s", res.Stdout)
+	}
+
+	lines := strings.Split(res.Stdout, "\n")
+	// We do not care about the first line, just the Slurm header
+	rawStatus := strings.TrimRight(lines[1], "\n")
+	switch rawStatus {
+	case "R":
+		return StatusRunning, nil
+	case "PD":
+		return StatusQueued, nil
+	}
+
+	return StatusUnknown, nil
+}
+
+func slurmJobStatus(jobmgr *JM, jobIDs []int) ([]JobStatus, error) {
+	var s []JobStatus
+	if jobmgr == nil {
+		return nil, fmt.Errorf("undefined job manager")
+	}
+
+	for _, jobID := range jobIDs {
+		jobStatus, err := getSlurmJobStatus(jobID)
+		if err != nil {
+			return nil, err
+		}
+		s = append(s, jobStatus)
+	}
+
+	return s, nil
+}
+
 // SlurmDetect is the function used by our job management framework to figure out if Slurm can be used and
 // if so return a JM structure with all the "function pointers" to interact with Slurm through our generic
 // API.
@@ -40,6 +92,7 @@ func SlurmDetect() (bool, JM) {
 	jm.ID = SlurmID
 	jm.submitJM = slurmSubmit
 	jm.loadJM = slurmLoad
+	jm.jobStatusJM = slurmJobStatus
 
 	return true, jm
 }
