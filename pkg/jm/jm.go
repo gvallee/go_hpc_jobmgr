@@ -47,6 +47,7 @@ const (
 	JOB_STATUS_UNKNOWN = iota
 	JOB_STATUS_QUEUED
 	JOB_STATUS_RUNNING
+	JOB_STATUS_STOP
 	JOB_STATUS_DONE
 )
 
@@ -61,6 +62,10 @@ var StatusQueued = JobStatus{
 var StatusRunning = JobStatus{
 	Code: JOB_STATUS_RUNNING,
 	Str:  "RUNNING",
+}
+var StatusStop = JobStatus{
+	Code: JOB_STATUS_STOP,
+	Str: "STOPPED",
 }
 var StatusDone = JobStatus{
 	Code: JOB_STATUS_DONE,

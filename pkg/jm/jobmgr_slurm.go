@@ -24,6 +24,10 @@ import (
 	"github.com/gvallee/go_util/pkg/util"
 )
 
+func removeFromSlice(a []string, idx int) []string {
+	return append(a[:idx], a[idx+1:]...)
+}
+
 func getSlurmJobStatus(jobID int) (JobStatus, error) {
 	var cmd advexec.Advcmd
 	var err error
@@ -31,7 +35,7 @@ func getSlurmJobStatus(jobID int) (JobStatus, error) {
 	if err != nil {
 		return StatusUnknown, err
 	}
-	cmd.CmdArgs = []string{"-j", strconv.Itoa(jobID), "--format=\"%t\""}
+	cmd.CmdArgs = []string{"-j", strconv.Itoa(jobID), "--format=%t"}
 	res := cmd.Run()
 	if res.Err != nil {
 		// if it fails it might mean the job is done
@@ -42,20 +46,25 @@ func getSlurmJobStatus(jobID int) (JobStatus, error) {
 		return StatusUnknown, res.Err
 	}
 
-	if len(res.Stdout) != 2 {
-		return StatusUnknown, fmt.Errorf("unexpected output: %s", res.Stdout)
-	}
-
 	lines := strings.Split(res.Stdout, "\n")
-	// We do not care about the first line, just the Slurm header
-	rawStatus := strings.TrimRight(lines[1], "\n")
+	// We do not care about the first lines, just the Slurm header and status that are not
+	// relevant to us
+	for i := 0; i < len(lines); i++ {
+		if lines[i] == "" {
+			lines = removeFromSlice(lines, i)
+		}
+	}
+	rawStatus := strings.TrimRight(lines[len(lines)-1], "\n")
 	switch rawStatus {
 	case "R":
 		return StatusRunning, nil
 	case "PD":
 		return StatusQueued, nil
+	case "ST":
+		return StatusStop, nil
 	}
 
+	fmt.Println("This does not make sense")
 	return StatusUnknown, nil
 }
 

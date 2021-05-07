@@ -48,7 +48,7 @@ func main() {
 	jobmgr := jm.Detect()
 	statuses, err := jobmgr.JobStatus(jobIDs)
 	if err != nil {
-		fmt.Printf("ERROR: unable to retrieve job(s) status")
+		fmt.Printf("ERROR: unable to retrieve job(s) status: %s", err)
 		os.Exit(1)
 	}
 	for idx := range jobIDs {
