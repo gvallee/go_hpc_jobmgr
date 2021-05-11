@@ -35,7 +35,7 @@ type Environment struct {
 	// InstallDir is where software packages needed for the job are installed
 	InstallDir string
 
-	mpiBin string
+	//mpiBin string
 }
 
 type JobStatus struct {
@@ -65,7 +65,7 @@ var StatusRunning = JobStatus{
 }
 var StatusStop = JobStatus{
 	Code: JOB_STATUS_STOP,
-	Str: "STOPPED",
+	Str:  "STOPPED",
 }
 var StatusDone = JobStatus{
 	Code: JOB_STATUS_DONE,

@@ -47,9 +47,7 @@ func PrunSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 		return res
 	}
 
-	for _, a := range j.Args {
-		cmd.CmdArgs = append(cmd.CmdArgs, a)
-	}
+	cmd.CmdArgs = append(cmd.CmdArgs, j.Args...)
 	cmd.CmdArgs = append(cmd.CmdArgs, "-x")
 	cmd.CmdArgs = append(cmd.CmdArgs, "PATH")
 	cmd.CmdArgs = append(cmd.CmdArgs, j.App.BinPath)

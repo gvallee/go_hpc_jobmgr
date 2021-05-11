@@ -52,7 +52,7 @@ func parseOmpiInfoOutputForVersion(output string) (string, error) {
 	if !strings.HasPrefix(lines[0], "Open MPI") {
 		return "", fmt.Errorf("invalid output format")
 	}
-	version := strings.TrimLeft(lines[0], "Open MPI v")
+	version := strings.TrimPrefix(lines[0], "Open MPI v")
 	version = strings.TrimRight(version, "\n")
 	return version, nil
 }

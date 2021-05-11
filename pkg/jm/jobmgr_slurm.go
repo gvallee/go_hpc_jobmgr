@@ -157,7 +157,7 @@ func getJobErrorFilePath(j *job.Job, sysCfg *sys.Config) string {
 func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) {
 	// TempFile is supposed to set the path to the batch script
 	if j.BatchScript == "" {
-		return "", fmt.Errorf("Batch script path is undefined")
+		return "", fmt.Errorf("batch script path is undefined")
 	}
 
 	scriptText := "#!/bin/bash\n#\n"
@@ -246,20 +246,23 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 		return fmt.Errorf("application binary is undefined")
 	}
 
-	// Create the batch script
+	// Create the batch script if the user did not specify a batch script to use.
+	// If the user specified the batch script to use, we use it as it is
 	if j.BatchScript == "" {
 		err := TempFile(j, sysCfg)
 		if err != nil {
 			return fmt.Errorf("unable to create temporary file: %s", err)
 		}
+
+		// Some sanity checks, required to set everything up for MPI
+		if j.MPICfg == nil {
+			return setupNonMpiJob(j, sysCfg)
+		}
+		return setupMpiJob(j, sysCfg)
 	}
 
-	// Some sanity checks, required to set everything up for MPI
-	if j.MPICfg == nil {
-		return setupNonMpiJob(j, sysCfg)
-	}
-
-	return setupMpiJob(j, sysCfg)
+	fmt.Printf("-> Using the user defined batch script %s\n", j.BatchScript)
+	return nil
 }
 
 // slurmSubmit prepares the batch script necessary to start a given job.
