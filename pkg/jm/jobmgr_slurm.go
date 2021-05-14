@@ -288,6 +288,7 @@ func slurmSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 		return resExec
 	}
 	cmd.BinPath = jobmgr.BinPath
+	cmd.ExecDir = j.RunDir
 	cmd.CmdArgs = append(cmd.CmdArgs, jobmgr.CmdArgs...)
 	cmd.CmdArgs = append(cmd.CmdArgs, j.BatchScript)
 

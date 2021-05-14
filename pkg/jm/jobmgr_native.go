@@ -89,6 +89,9 @@ func nativeSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 	j.SetOutputFn(nativeGetOutput)
 	j.SetErrorFn(nativeGetError)
 
+	if j.RunDir != "" {
+		cmd.ExecDir = j.RunDir
+	}
 	return cmd.Run()
 }
 

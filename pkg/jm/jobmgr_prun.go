@@ -52,6 +52,9 @@ func PrunSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 	cmd.CmdArgs = append(cmd.CmdArgs, "PATH")
 	cmd.CmdArgs = append(cmd.CmdArgs, j.App.BinPath)
 	cmd.CmdArgs = append(cmd.CmdArgs, j.App.BinArgs...)
+	if j.RunDir != "" {
+		cmd.ExecDir = j.RunDir
+	}
 
 	//newPath := getEnvPath(j.HostCfg, env)
 	//newLDPath := getEnvLDPath(j.HostCfg, env)

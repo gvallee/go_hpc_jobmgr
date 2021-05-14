@@ -66,6 +66,9 @@ type Job struct {
 
 	// Device is the network device to use to run the job
 	Device string
+
+	// RunDir is the path to the directory from which the job needs to be launched
+	RunDir string
 }
 
 // GetOutput is the function to call to gather the output (stdout) of the application after execution of the job
