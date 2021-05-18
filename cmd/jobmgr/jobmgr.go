@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 
 func main() {
 	statusFlag := flag.String("job-status", "", "Display the status of various jobs; comma-separated list of job IDs")
+	runningJobsFlag := flag.String("running-jobs", "", "Display how many jobs are already running on the target (e.g., a Slurm partition)")
 	help := flag.Bool("h", false, "Help message")
 
 	flag.Parse()
@@ -30,28 +32,44 @@ func main() {
 		os.Exit(0)
 	}
 
-	jobIDsStr := strings.Split(*statusFlag, ",")
-	if len(jobIDsStr) == 0 {
-		fmt.Printf("ERROR: please provide a valid list of job IDs")
-		os.Exit(1)
-	}
-	var jobIDs []int
-	for _, w := range jobIDsStr {
-		jobID, err := strconv.Atoi(w)
-		if err != nil {
-			fmt.Printf("ERROR: invalid job ID: %s", w)
+	jobmgr := jm.Detect()
+	if *statusFlag != "" {
+		jobIDsStr := strings.Split(*statusFlag, ",")
+		if len(jobIDsStr) == 0 {
+			fmt.Printf("ERROR: please provide a valid list of job IDs\n")
 			os.Exit(1)
 		}
-		jobIDs = append(jobIDs, jobID)
+		var jobIDs []int
+		for _, w := range jobIDsStr {
+			jobID, err := strconv.Atoi(w)
+			if err != nil {
+				fmt.Printf("ERROR: invalid job ID: %s\n", w)
+				os.Exit(1)
+			}
+			jobIDs = append(jobIDs, jobID)
+		}
+
+		statuses, err := jobmgr.JobStatus(jobIDs)
+		if err != nil {
+			fmt.Printf("ERROR: unable to retrieve job(s) status: %s\n", err)
+			os.Exit(1)
+		}
+		for idx := range jobIDs {
+			fmt.Printf("%d: %s\n", jobIDs[idx], statuses[idx].Str)
+		}
 	}
 
-	jobmgr := jm.Detect()
-	statuses, err := jobmgr.JobStatus(jobIDs)
-	if err != nil {
-		fmt.Printf("ERROR: unable to retrieve job(s) status: %s", err)
-		os.Exit(1)
-	}
-	for idx := range jobIDs {
-		fmt.Printf("%d: %s\n", jobIDs[idx], statuses[idx].Str)
+	if *runningJobsFlag != "" {
+		u, err := user.Current()
+		if err != nil {
+			fmt.Printf("ERROR: unable to retrieve the user ID: %s\n", err)
+			os.Exit(1)
+		}
+		num, err := jobmgr.NumJobs(*runningJobsFlag, u.Username)
+		if err != nil {
+			fmt.Printf("ERROR: unable to retrieve the number of running jobs: %s\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Number of running jobs: %d\n", num)
 	}
 }

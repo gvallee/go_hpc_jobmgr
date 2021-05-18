@@ -68,6 +68,31 @@ func getSlurmJobStatus(jobID int) (JobStatus, error) {
 	return StatusUnknown, nil
 }
 
+func getNumJobs(jobmgr *JM, partitionName string, user string) (int, error) {
+	var cmd advexec.Advcmd
+	var err error
+	cmd.BinPath, err = exec.LookPath("squeue")
+	if err != nil {
+		return -1, err
+	}
+	cmd.CmdArgs = []string{"-p", partitionName, "-u", user}
+	res := cmd.Run()
+	if res.Err != nil {
+		return -1, res.Err
+	}
+
+	lines := strings.Split(res.Stdout, "\n")
+	numJobs := 0
+	for _, line := range lines {
+		if strings.Contains(line, "JOBID") || line == "" {
+			continue
+		}
+		numJobs++
+	}
+
+	return numJobs, nil
+}
+
 func slurmJobStatus(jobmgr *JM, jobIDs []int) ([]JobStatus, error) {
 	var s []JobStatus
 	if jobmgr == nil {
@@ -83,6 +108,10 @@ func slurmJobStatus(jobmgr *JM, jobIDs []int) ([]JobStatus, error) {
 	}
 
 	return s, nil
+}
+
+func slurmNumJobs(jobmgr *JM, partition string, user string) (int, error) {
+	return getNumJobs(jobmgr, partition, user)
 }
 
 // SlurmDetect is the function used by our job management framework to figure out if Slurm can be used and
@@ -102,6 +131,7 @@ func SlurmDetect() (bool, JM) {
 	jm.submitJM = slurmSubmit
 	jm.loadJM = slurmLoad
 	jm.jobStatusJM = slurmJobStatus
+	jm.numJobsJM = getNumJobs
 
 	return true, jm
 }

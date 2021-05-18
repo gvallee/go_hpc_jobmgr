@@ -85,6 +85,8 @@ type SubmitFn func(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result
 
 type JobStatusFn func(jobmgr *JM, jobIDs []int) ([]JobStatus, error)
 
+type NumJobsFn func(jobmgr *JM, partition string, user string) (int, error)
+
 // JM is the structure representing a specific JM
 type JM struct {
 	// ID identifies which job manager has been detected on the system
@@ -95,6 +97,8 @@ type JM struct {
 	submitJM SubmitFn
 
 	jobStatusJM JobStatusFn
+
+	numJobsJM NumJobsFn
 
 	BinPath string
 
@@ -167,5 +171,15 @@ func (jobmgr *JM) Submit(j *job.Job, sysCfg *sys.Config) advexec.Result {
 }
 
 func (jobmgr *JM) JobStatus(jobIDs []int) ([]JobStatus, error) {
+	if jobmgr.jobStatusJM == nil {
+		return nil, fmt.Errorf("not implemented")
+	}
 	return jobmgr.jobStatusJM(jobmgr, jobIDs)
+}
+
+func (jobmgr *JM) NumJobs(partition string, user string) (int, error) {
+	if jobmgr.numJobsJM == nil {
+		return -1, fmt.Errorf("not implemented")
+	}
+	return jobmgr.numJobsJM(jobmgr, partition, user)
 }
