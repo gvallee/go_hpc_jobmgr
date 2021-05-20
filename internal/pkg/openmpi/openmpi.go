@@ -67,6 +67,9 @@ func DetectFromDir(dir string) (string, string, error) {
 	var versionCmd advexec.Advcmd
 	versionCmd.BinPath = targetBin
 	versionCmd.CmdArgs = append(versionCmd.CmdArgs, "--version")
+	newLDPath := filepath.Join(dir, "lib") + ":$LD_LIBRARY_PATH"
+	newPath := filepath.Join(dir, "bin") + ":$PATH"
+	versionCmd.Env = []string{"LD_LIBRARY_PATH=" + newLDPath, "PATH=" + newPath}
 	res := versionCmd.Run()
 	if res.Err != nil {
 		log.Printf("unable to run ompi_info: %s; stdout: %s; stderr: %s", res.Err, res.Stdout, res.Stderr)
