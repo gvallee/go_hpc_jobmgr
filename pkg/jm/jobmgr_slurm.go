@@ -24,6 +24,10 @@ import (
 	"github.com/gvallee/go_util/pkg/util"
 )
 
+const (
+	slurmJobIDPrefix = "Submitted batch job "
+)
+
 func removeFromSlice(a []string, idx int) []string {
 	return append(a[:idx], a[idx+1:]...)
 }
@@ -166,22 +170,18 @@ func slurmLoad(jobmgr *JM, sysCfg *sys.Config) error {
 }
 
 func getJobOutFilenamePrefix(j *job.Job) string {
-	if j.MPICfg != nil {
+	if j.MPICfg != nil && j.MPICfg.Implem.ID != "" {
 		return j.Name + "-" + j.MPICfg.Implem.ID + "-" + j.MPICfg.Implem.Version
 	}
 	return j.Name
 }
 
 func getJobOutputFilePath(j *job.Job, sysCfg *sys.Config) string {
-	errorFilename := getJobOutFilenamePrefix(j) + ".out"
-	path := filepath.Join(sysCfg.ScratchDir, errorFilename)
-	return path
+	return getJobOutFilenamePrefix(j) + ".out"
 }
 
 func getJobErrorFilePath(j *job.Job, sysCfg *sys.Config) string {
-	outputFilename := getJobOutFilenamePrefix(j) + ".err"
-	path := filepath.Join(sysCfg.ScratchDir, outputFilename)
-	return path
+	return getJobOutFilenamePrefix(j) + ".err"
 }
 
 func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) {
@@ -192,19 +192,28 @@ func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) 
 
 	scriptText := "#!/bin/bash\n#\n"
 	if j.Partition != "" {
-		scriptText += slurm.ScriptCmdPrefix + " --partition=" + j.Partition + "\n"
+		scriptText += slurm.ScriptCmdPrefix + " -p " + j.Partition + "\n"
 	}
 
 	if j.NNodes > 0 {
-		scriptText += slurm.ScriptCmdPrefix + " --nodes=" + strconv.Itoa(j.NNodes) + "\n"
+		scriptText += slurm.ScriptCmdPrefix + " -N " + strconv.Itoa(j.NNodes) + "\n"
 	}
 
-	if j.NP > 0 {
-		scriptText += slurm.ScriptCmdPrefix + " --ntasks=" + strconv.Itoa(j.NP) + "\n"
-	}
+	scriptText += slurm.ScriptCmdPrefix + " -t 0:30:0\n"
+
+	/*
+		if j.NP > 0 {
+			scriptText += slurm.ScriptCmdPrefix + " --ntasks=" + strconv.Itoa(j.NP) + "\n"
+		}
+	*/
 
 	scriptText += slurm.ScriptCmdPrefix + " --error=" + getJobErrorFilePath(j, sysCfg) + "\n"
 	scriptText += slurm.ScriptCmdPrefix + " --output=" + getJobOutputFilePath(j, sysCfg) + "\n"
+	scriptText += "\n"
+
+	if len(j.RequiredModules) > 0 {
+		scriptText += "\nmodule purge\nmodule load " + strings.Join(j.RequiredModules, " ") + "\n"
+	}
 
 	return scriptText, nil
 }
@@ -219,13 +228,17 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	netCfg.Device = j.Device
 
 	// Add the mpirun command
-	mpirunPath := filepath.Join(j.MPICfg.Implem.InstallDir, "bin", "mpirun")
+	if j.MPICfg != nil && len(j.RequiredModules) == 0 {
+		scriptText += "\nMPI_DIR=" + j.MPICfg.Implem.InstallDir + "\n"
+		scriptText += "export PATH=$MPI_DIR/bin:$PATH\n"
+		scriptText += "export LD_LIBRARY_PATH=$MPI_DIR/lib:$LD_LIBRARY_PATH\n\n"
+	}
 	mpirunArgs, errMpiArgs := mpi.GetMpirunArgs(&j.MPICfg.Implem, &j.App, sysCfg, netCfg, j.MPICfg.UserMpirunArgs)
 	if errMpiArgs != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
 
-	scriptText += "\n" + mpirunPath + " "
+	scriptText += "\nmpirun "
 	if j.NP > 0 {
 		scriptText += fmt.Sprintf("-np %d ", j.NP)
 	}
@@ -285,7 +298,7 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 		}
 
 		// Some sanity checks, required to set everything up for MPI
-		if j.MPICfg == nil {
+		if j.MPICfg == nil || j.MPICfg.Implem.ID == "" {
 			return setupNonMpiJob(j, sysCfg)
 		}
 		return setupMpiJob(j, sysCfg)
@@ -317,6 +330,7 @@ func slurmSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 		resExec.Err = fmt.Errorf("undefined batch script path")
 		return resExec
 	}
+
 	cmd.BinPath = jobmgr.BinPath
 	cmd.ExecDir = j.RunDir
 	cmd.CmdArgs = append(cmd.CmdArgs, jobmgr.CmdArgs...)
@@ -324,5 +338,47 @@ func slurmSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 
 	j.SetOutputFn(slurmGetOutput)
 	j.SetErrorFn(slurmGetError)
-	return cmd.Run()
+
+	if !util.PathExists(sysCfg.ScratchDir) {
+		resExec.Err = fmt.Errorf("scratch directory does not exist")
+		return resExec
+	}
+
+	cmdRes := cmd.Run()
+	if strings.HasPrefix(cmdRes.Stdout, slurmJobIDPrefix) {
+		jobIDStr := strings.TrimPrefix(cmdRes.Stdout, slurmJobIDPrefix)
+		jobIDStr = strings.TrimRight(jobIDStr, "\n")
+		j.ID, err = strconv.Atoi(jobIDStr)
+		if err != nil {
+			resExec.Err = fmt.Errorf("unable to get job ID: %s", err)
+			return resExec
+		}
+	}
+
+	var expRes advexec.Result
+	expRes.Err = cmdRes.Err
+
+	stdoutFile := getJobOutputFilePath(j, sysCfg)
+	if j.RunDir != "" {
+		stdoutFile = filepath.Join(j.RunDir, stdoutFile)
+	}
+	outputFileContent, err := ioutil.ReadFile(stdoutFile)
+	if err != nil {
+		resExec.Err = fmt.Errorf("unable to read %s: %s", stdoutFile, err)
+		return resExec
+	}
+	expRes.Stdout = string(outputFileContent)
+
+	stderrFile := getJobOutputFilePath(j, sysCfg)
+	if j.RunDir != "" {
+		stderrFile = filepath.Join(j.RunDir, stderrFile)
+	}
+	errFileContent, err := ioutil.ReadFile(stderrFile)
+	if err != nil {
+		resExec.Err = fmt.Errorf("unable to read %s: %s", stderrFile, err)
+		return resExec
+	}
+	expRes.Stderr = string(errFileContent)
+
+	return expRes
 }

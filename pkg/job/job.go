@@ -28,6 +28,9 @@ type Job struct {
 	// Name is the name of the job
 	Name string
 
+	// ID is the internal identifier for the job (e.g., PID, Slurm job ID)
+	ID int
+
 	// NP is the number of ranks
 	NP int
 
@@ -69,6 +72,9 @@ type Job struct {
 
 	// RunDir is the path to the directory from which the job needs to be launched
 	RunDir string
+
+	// RequiredModules is the list of modules to load to be able to run the job
+	RequiredModules []string
 }
 
 // GetOutput is the function to call to gather the output (stdout) of the application after execution of the job

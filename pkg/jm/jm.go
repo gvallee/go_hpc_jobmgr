@@ -130,10 +130,10 @@ func Detect() JM {
 
 // TempFile creates a temporary file that is used to store a batch script
 func TempFile(j *job.Job, sysCfg *sys.Config) error {
-	filePrefix := "sbash-" + j.Name
+	filePrefix := "sbatch-" + j.Name
 	path := ""
 	if sysCfg.Persistent == "" {
-		f, err := ioutil.TempFile("", filePrefix+"-")
+		f, err := ioutil.TempFile(sysCfg.ScratchDir, filePrefix+"-")
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file: %s", err)
 		}
