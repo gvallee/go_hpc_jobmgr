@@ -13,10 +13,10 @@ import (
 
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_exec/pkg/results"
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/jm"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
 )
 
 // Info gathers all the details to start a job

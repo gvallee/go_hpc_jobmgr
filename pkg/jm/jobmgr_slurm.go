@@ -18,9 +18,9 @@ import (
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/slurm"
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
 	"github.com/gvallee/go_util/pkg/util"
 )
 
@@ -68,7 +68,6 @@ func getSlurmJobStatus(jobID int) (JobStatus, error) {
 		return StatusStop, nil
 	}
 
-	fmt.Println("This does not make sense")
 	return StatusUnknown, nil
 }
 

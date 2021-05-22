@@ -14,7 +14,7 @@ import (
 
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
 	"github.com/gvallee/go_util/pkg/util"
 )
 

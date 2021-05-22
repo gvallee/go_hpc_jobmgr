@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
 	"github.com/gvallee/go_util/pkg/util"
 )
 
@@ -45,6 +45,7 @@ type JobStatus struct {
 
 const (
 	JOB_STATUS_UNKNOWN = iota
+	JOB_STATUS_PENDING
 	JOB_STATUS_QUEUED
 	JOB_STATUS_RUNNING
 	JOB_STATUS_STOP
@@ -54,6 +55,10 @@ const (
 var StatusUnknown = JobStatus{
 	Code: JOB_STATUS_UNKNOWN,
 	Str:  "UNKNOWN",
+}
+var StatusPending = JobStatus{
+	Code: JOB_STATUS_PENDING,
+	Str:  "PENDING",
 }
 var StatusQueued = JobStatus{
 	Code: JOB_STATUS_QUEUED,

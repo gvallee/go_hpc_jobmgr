@@ -14,9 +14,9 @@ import (
 	"github.com/gvallee/go_exec/pkg/manifest"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/app"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/implem"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
 )
 
 // Config represents a configuration of MPI for a target platform

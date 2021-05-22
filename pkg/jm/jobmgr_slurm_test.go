@@ -15,10 +15,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/sys"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/implem"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
+	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
 	"github.com/gvallee/go_util/pkg/util"
 )
 
