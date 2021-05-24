@@ -81,7 +81,8 @@ func expectedOutput(stdout string, stderr string, appInfo *app.Info, jobInfo *jo
 }
 */
 
-// Run executes a container with a specific version of MPI on the host
+// Run executes a job with a specific version of MPI on the host.
+// This is a blocking function, it returns when the job has completed
 func Run(j *job.Job, hostMPI *mpi.Config, jobmgr *jm.JM, sysCfg *sys.Config, args []string) (results.Result, advexec.Result) {
 	var execRes advexec.Result
 	var expRes results.Result

@@ -60,12 +60,14 @@ func prepareMPISubmit(cmd *advexec.Advcmd, j *job.Job, sysCfg *sys.Config, netCf
 	return nil
 }
 
+/*
 func prepareStdSubmit(cmd *advexec.Advcmd, j *job.Job, env *Environment, sysCfg *sys.Config) error {
 	cmd.BinPath = j.App.BinPath
 	cmd.CmdArgs = append(cmd.CmdArgs, j.App.BinArgs...)
 
 	return nil
 }
+*/
 
 // nativeSubmit is the function to call to submit a job through the native job manager
 func nativeSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
@@ -108,6 +110,7 @@ func NativeDetect() (bool, JM) {
 	jm.submitJM = nativeSubmit
 	jm.loadJM = nativeLoad
 	jm.jobStatusJM = nil // Not implemented yet
+	jm.postRunJM = nil   // Not implemented yet
 
 	// This is the default job manager, i.e., mpirun so we do not check anything, just return this component.
 	// If the component is selected and mpirun not correctly installed, the framework will pick it up later.

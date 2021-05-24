@@ -75,6 +75,8 @@ type Job struct {
 
 	// RequiredModules is the list of modules to load to be able to run the job
 	RequiredModules []string
+
+	NonBlocking bool
 }
 
 // GetOutput is the function to call to gather the output (stdout) of the application after execution of the job

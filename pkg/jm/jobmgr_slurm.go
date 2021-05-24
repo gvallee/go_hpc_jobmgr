@@ -65,13 +65,30 @@ func getSlurmJobStatus(jobID int) (JobStatus, error) {
 	case "PD":
 		return StatusQueued, nil
 	case "ST":
+		// Try to get more details with a sacct command
+		var sacctCmd advexec.Advcmd
+		var err error
+		sacctCmd.BinPath, err = exec.LookPath("sacct")
+		if err != nil {
+			return StatusUnknown, err
+		}
+		sacctCmd.CmdArgs = []string{"-j", strconv.Itoa(jobID), "--format=state"}
+		resSacctCmd := sacctCmd.Run()
+		if resSacctCmd.Err == nil {
+			output := strings.Split(resSacctCmd.Stdout, "\n")
+			if len(output) > 2 {
+				if strings.Contains(output[2], "COMPLETED") {
+					return StatusDone, nil
+				}
+			}
+		}
 		return StatusStop, nil
 	}
 
 	return StatusUnknown, nil
 }
 
-func getNumJobs(jobmgr *JM, partitionName string, user string) (int, error) {
+func slurmGetNumJobs(jobmgr *JM, partitionName string, user string) (int, error) {
 	var cmd advexec.Advcmd
 	var err error
 	cmd.BinPath, err = exec.LookPath("squeue")
@@ -113,10 +130,6 @@ func slurmJobStatus(jobmgr *JM, jobIDs []int) ([]JobStatus, error) {
 	return s, nil
 }
 
-func slurmNumJobs(jobmgr *JM, partition string, user string) (int, error) {
-	return getNumJobs(jobmgr, partition, user)
-}
-
 // SlurmDetect is the function used by our job management framework to figure out if Slurm can be used and
 // if so return a JM structure with all the "function pointers" to interact with Slurm through our generic
 // API.
@@ -134,7 +147,8 @@ func SlurmDetect() (bool, JM) {
 	jm.submitJM = slurmSubmit
 	jm.loadJM = slurmLoad
 	jm.jobStatusJM = slurmJobStatus
-	jm.numJobsJM = getNumJobs
+	jm.numJobsJM = slurmGetNumJobs
+	jm.postRunJM = slurmPostJob
 
 	return true, jm
 }
@@ -164,7 +178,6 @@ func slurmGetError(j *job.Job, sysCfg *sys.Config) string {
 // slurmLoad is the function called when trying to load a JM module
 func slurmLoad(jobmgr *JM, sysCfg *sys.Config) error {
 	// jobmgr.BinPath has been set during Detect()
-	jobmgr.CmdArgs = append(jobmgr.CmdArgs, "-W") // We always wait until the submitted job terminates
 	return nil
 }
 
@@ -307,6 +320,34 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 	return nil
 }
 
+func slurmPostJob(cmdRes *advexec.Result, j *job.Job, sysCfg *sys.Config) advexec.Result {
+	var expRes advexec.Result
+	expRes.Err = cmdRes.Err
+
+	stdoutFile := getJobOutputFilePath(j, sysCfg)
+	if j.RunDir != "" {
+		stdoutFile = filepath.Join(j.RunDir, stdoutFile)
+	}
+	outputFileContent, err := ioutil.ReadFile(stdoutFile)
+	if err != nil {
+		expRes.Err = fmt.Errorf("unable to read %s: %s", stdoutFile, err)
+		return expRes
+	}
+	expRes.Stdout = string(outputFileContent)
+
+	stderrFile := getJobOutputFilePath(j, sysCfg)
+	if j.RunDir != "" {
+		stderrFile = filepath.Join(j.RunDir, stderrFile)
+	}
+	errFileContent, err := ioutil.ReadFile(stderrFile)
+	if err != nil {
+		expRes.Err = fmt.Errorf("unable to read %s: %s", stderrFile, err)
+		return expRes
+	}
+	expRes.Stderr = string(errFileContent)
+	return expRes
+}
+
 // slurmSubmit prepares the batch script necessary to start a given job.
 //
 // Note that a script does not need any specific environment to be submitted
@@ -332,6 +373,11 @@ func slurmSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 
 	cmd.BinPath = jobmgr.BinPath
 	cmd.ExecDir = j.RunDir
+	// We want the default to be blocking sbatch but users can request non-blocking
+	if !j.NonBlocking {
+		jobmgr.CmdArgs = append(jobmgr.CmdArgs, "-W")
+	}
+
 	cmd.CmdArgs = append(cmd.CmdArgs, jobmgr.CmdArgs...)
 	cmd.CmdArgs = append(cmd.CmdArgs, j.BatchScript)
 
@@ -354,30 +400,9 @@ func slurmSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 		}
 	}
 
-	var expRes advexec.Result
-	expRes.Err = cmdRes.Err
+	if !j.NonBlocking {
+		return slurmPostJob(&cmdRes, j, sysCfg)
+	}
 
-	stdoutFile := getJobOutputFilePath(j, sysCfg)
-	if j.RunDir != "" {
-		stdoutFile = filepath.Join(j.RunDir, stdoutFile)
-	}
-	outputFileContent, err := ioutil.ReadFile(stdoutFile)
-	if err != nil {
-		resExec.Err = fmt.Errorf("unable to read %s: %s", stdoutFile, err)
-		return resExec
-	}
-	expRes.Stdout = string(outputFileContent)
-
-	stderrFile := getJobOutputFilePath(j, sysCfg)
-	if j.RunDir != "" {
-		stderrFile = filepath.Join(j.RunDir, stderrFile)
-	}
-	errFileContent, err := ioutil.ReadFile(stderrFile)
-	if err != nil {
-		resExec.Err = fmt.Errorf("unable to read %s: %s", stderrFile, err)
-		return resExec
-	}
-	expRes.Stderr = string(errFileContent)
-
-	return expRes
+	return cmdRes
 }

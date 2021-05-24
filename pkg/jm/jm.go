@@ -85,12 +85,17 @@ type Loader interface {
 // LoadFn loads a specific job manager once detected
 type LoadFn func(jobmgr *JM, sysCfg *sys.Config) error
 
-// SubmitFn is a "function pointer" that lets us job a new job
+// SubmitFn is a "function pointer" that lets us submit a new job
 type SubmitFn func(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result
 
+// JobStatusFn is a "function pointer" that lets us query the status of a job
 type JobStatusFn func(jobmgr *JM, jobIDs []int) ([]JobStatus, error)
 
+// NumJobsFn is a "function pointer" that lets us know how many jobs the job manager is currently handling
 type NumJobsFn func(jobmgr *JM, partition string, user string) (int, error)
+
+// PostJobFn is a "function pointer" that lets us update results once the job completes. By default jobs are blocking, in which case this does not need to be used.
+type PostJobFn func(cmdRes *advexec.Result, j *job.Job, sysCfg *sys.Config) advexec.Result
 
 // JM is the structure representing a specific JM
 type JM struct {
@@ -104,6 +109,8 @@ type JM struct {
 	jobStatusJM JobStatusFn
 
 	numJobsJM NumJobsFn
+
+	postRunJM PostJobFn
 
 	BinPath string
 
@@ -187,4 +194,13 @@ func (jobmgr *JM) NumJobs(partition string, user string) (int, error) {
 		return -1, fmt.Errorf("not implemented")
 	}
 	return jobmgr.numJobsJM(jobmgr, partition, user)
+}
+
+func (jobmgr *JM) PostRun(cmdRes *advexec.Result, j *job.Job, sysCfg *sys.Config) advexec.Result {
+	var res advexec.Result
+	if jobmgr.postRunJM == nil {
+		res.Err = fmt.Errorf("not implemented")
+		return res
+	}
+	return jobmgr.postRunJM(cmdRes, j, sysCfg)
 }
