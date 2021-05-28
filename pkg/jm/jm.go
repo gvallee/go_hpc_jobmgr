@@ -140,31 +140,45 @@ func Detect() JM {
 	return comp
 }
 
+func getBatchScriptPath(j *job.Job, sysCfg *sys.Config, batchScriptFilenamePrefix string) (string, error) {
+	if j.RunDir != "" {
+		return filepath.Join(j.RunDir, batchScriptFilenamePrefix+".sh"), nil
+	}
+
+	if sysCfg.Persistent == "" {
+		f, err := ioutil.TempFile(sysCfg.ScratchDir, batchScriptFilenamePrefix+"-")
+		if err != nil {
+			return "", fmt.Errorf("failed to create temporary file: %s", err)
+		}
+		path := f.Name()
+		f.Close()
+		return path, nil
+	}
+
+	if j.MPICfg == nil {
+		fileName := batchScriptFilenamePrefix + ".sh"
+		path := filepath.Join(j.MPICfg.Implem.InstallDir, fileName)
+		if util.PathExists(path) {
+			return "", fmt.Errorf("file %s already exists", path)
+		}
+		return path, nil
+	}
+	return "", fmt.Errorf("unable to determine the path to use for the batch script")
+}
+
 // TempFile creates a temporary file that is used to store a batch script
 func TempFile(j *job.Job, sysCfg *sys.Config) error {
 	filePrefix := "sbatch-" + j.Name
-	path := ""
-	if sysCfg.Persistent == "" {
-		f, err := ioutil.TempFile(sysCfg.ScratchDir, filePrefix+"-")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file: %s", err)
-		}
-		path = f.Name()
-		f.Close()
-		j.BatchScript = path
-	} else {
-		fileName := filePrefix + ".sh"
-		path = filepath.Join(j.MPICfg.Implem.InstallDir, fileName)
-		j.BatchScript = path
-		if util.PathExists(path) {
-			return fmt.Errorf("file %s already exists", path)
-		}
+	var err error
+	j.BatchScript, err = getBatchScriptPath(j, sysCfg, filePrefix)
+	if err != nil {
+		return err
 	}
 
 	j.CleanUp = func(...interface{}) error {
-		err := os.RemoveAll(path)
+		err := os.RemoveAll(j.BatchScript)
 		if err != nil {
-			return fmt.Errorf("unable to delete %s: %s", path, err)
+			return fmt.Errorf("unable to delete %s: %s", j.BatchScript, err)
 		}
 		return nil
 	}
