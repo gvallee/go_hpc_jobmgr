@@ -96,8 +96,13 @@ func Run(j *job.Job, hostMPI *mpi.Config, jobmgr *jm.JM, sysCfg *sys.Config, arg
 	}
 
 	if len(args) == 0 {
-		j.NNodes = 2
-		j.NP = 2
+		// No arguments are specified so we make sure we have some basic default values that make sense
+		if j.NNodes == 0 {
+			j.NNodes = 2
+		}
+		if j.NP == 0 {
+			j.NP = 2
+		}
 	} else {
 		j.Args = append(j.Args, args...)
 	}

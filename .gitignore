@@ -5,6 +5,9 @@
 *.so
 *.dylib
 
+# Generated binaries
+cmd/jobmgr/jobmgr
+
 # Test binary, built with `go test -c`
 *.test
 

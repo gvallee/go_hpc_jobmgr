@@ -17,6 +17,7 @@ import (
 
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/slurm"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
@@ -254,6 +255,11 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	if j.NP > 0 {
 		scriptText += fmt.Sprintf("-np %d ", j.NP)
 	}
+	// todo: this should really be in the openmpi package
+	if j.MPICfg.Implem.ID == openmpi.ID {
+		ppr := j.NP / j.NNodes
+		scriptText += fmt.Sprintf("--map-by ppr:%d:node -rank-by core -bind-to core", ppr)
+	}
 	scriptText += " " + strings.Join(mpirunArgs, " ") + " " + j.App.BinPath + "\n"
 
 	err = ioutil.WriteFile(j.BatchScript, []byte(scriptText), 0644)
@@ -261,7 +267,7 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 		return fmt.Errorf("unable to write to file %s: %s", j.BatchScript, err)
 	}
 
-	fmt.Printf("batch script ready: %s\n", j.BatchScript)
+	log.Printf("batch script ready: %s\n", j.BatchScript)
 
 	return nil
 }
@@ -270,7 +276,6 @@ func setupNonMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	if j.BatchScript == "" {
 		return fmt.Errorf("undefined job script path")
 	}
-	fmt.Printf("Creating %s\n", j.BatchScript)
 	scriptText, err := generateBatchScriptContent(j, sysCfg)
 	if err != nil {
 		return err
