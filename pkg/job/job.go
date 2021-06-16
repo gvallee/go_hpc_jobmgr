@@ -77,6 +77,10 @@ type Job struct {
 	RequiredModules []string
 
 	NonBlocking bool
+
+	CustomEnv map[string]string
+
+	ExecutionTimestamp string
 }
 
 // GetOutput is the function to call to gather the output (stdout) of the application after execution of the job

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
@@ -183,10 +184,13 @@ func slurmLoad(jobmgr *JM, sysCfg *sys.Config) error {
 }
 
 func getJobOutFilenamePrefix(j *job.Job) string {
-	if j.MPICfg != nil && j.MPICfg.Implem.ID != "" {
-		return j.Name + "-" + j.MPICfg.Implem.ID + "-" + j.MPICfg.Implem.Version
+	if j.ExecutionTimestamp == "" {
+		return ""
 	}
-	return j.Name
+	if j.MPICfg != nil && j.MPICfg.Implem.ID != "" {
+		return j.Name + "-" + j.ExecutionTimestamp + "-" + j.MPICfg.Implem.ID + j.MPICfg.Implem.Version
+	}
+	return j.Name + "-" + j.ExecutionTimestamp
 }
 
 func getJobOutputFilePath(j *job.Job, sysCfg *sys.Config) string {
@@ -203,7 +207,7 @@ func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) 
 		return "", fmt.Errorf("batch script path is undefined")
 	}
 
-	scriptText := "#!/bin/bash\n#\n"
+	scriptText := "#!/bin/bash -l\n#\n"
 	if j.Partition != "" {
 		scriptText += slurm.ScriptCmdPrefix + " -p " + j.Partition + "\n"
 	}
@@ -220,12 +224,20 @@ func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) 
 		}
 	*/
 
+	now := time.Now()
+	j.ExecutionTimestamp = string(now.Format("060102150405"))
 	scriptText += slurm.ScriptCmdPrefix + " --error=" + getJobErrorFilePath(j, sysCfg) + "\n"
 	scriptText += slurm.ScriptCmdPrefix + " --output=" + getJobOutputFilePath(j, sysCfg) + "\n"
 	scriptText += "\n"
 
 	if len(j.RequiredModules) > 0 {
 		scriptText += "\nmodule purge\nmodule load " + strings.Join(j.RequiredModules, " ") + "\n"
+	}
+
+	if j.CustomEnv != nil {
+		for envvar, val := range j.CustomEnv {
+			scriptText += fmt.Sprintf("export %s=%s\n", envvar, val)
+		}
 	}
 
 	return scriptText, nil
@@ -240,6 +252,12 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	netCfg := new(network.Config)
 	netCfg.Device = j.Device
 
+	if j.CustomEnv != nil {
+		for envvar, val := range j.CustomEnv {
+			scriptText += fmt.Sprintf("export %s=%s\n", envvar, val)
+		}
+	}
+
 	// Add the mpirun command
 	if j.MPICfg != nil && len(j.RequiredModules) == 0 {
 		scriptText += "\nMPI_DIR=" + j.MPICfg.Implem.InstallDir + "\n"
@@ -250,6 +268,8 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	if errMpiArgs != nil {
 		return fmt.Errorf("unable to get mpirun arguments: %s", err)
 	}
+
+	scriptText += "\nwhich mpirun\n"
 
 	scriptText += "\nmpirun "
 	if j.NP > 0 {
@@ -383,8 +403,11 @@ func slurmSubmit(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result {
 		jobmgr.CmdArgs = append(jobmgr.CmdArgs, "-W")
 	}
 
-	cmd.CmdArgs = append(cmd.CmdArgs, jobmgr.CmdArgs...)
-	cmd.CmdArgs = append(cmd.CmdArgs, j.BatchScript)
+	if len(jobmgr.CmdArgs) > 0 {
+		cmd.CmdArgs = append(cmd.CmdArgs, jobmgr.CmdArgs...)
+	}
+	//cmd.CmdArgs = append(cmd.CmdArgs, j.BatchScript)
+	cmd.CmdArgs = []string{j.BatchScript}
 
 	j.SetOutputFn(slurmGetOutput)
 	j.SetErrorFn(slurmGetError)
