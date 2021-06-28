@@ -12,6 +12,7 @@ import (
 	"github.com/gvallee/go_hpc_jobmgr/pkg/app"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
+	"github.com/gvallee/go_util/pkg/timestamp"
 )
 
 // CleanUpFn is a "function pointer" to call to clean up the system after the completion of a job
@@ -81,6 +82,8 @@ type Job struct {
 	CustomEnv map[string]string
 
 	ExecutionTimestamp string
+
+	MaxExecTime string
 }
 
 // GetOutput is the function to call to gather the output (stdout) of the application after execution of the job
@@ -101,4 +104,10 @@ func (j *Job) SetOutputFn(fn GetOutputFn) {
 // SetErrorFn sets the internal function specific to the job manager to get stderr of a job
 func (j *Job) SetErrorFn(fn GetErrorFn) {
 	j.internalGetError = fn
+}
+
+func (j *Job) SetTimestamp() {
+	if j.ExecutionTimestamp == "" {
+		j.ExecutionTimestamp = timestamp.Now()
+	}
 }

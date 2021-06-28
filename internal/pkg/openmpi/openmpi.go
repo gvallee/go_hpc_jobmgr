@@ -72,8 +72,13 @@ func DetectFromDir(dir string) (string, string, error) {
 	versionCmd.Env = []string{"LD_LIBRARY_PATH=" + newLDPath, "PATH=" + newPath}
 	res := versionCmd.Run()
 	if res.Err != nil {
-		log.Printf("unable to run ompi_info: %s; stdout: %s; stderr: %s", res.Err, res.Stdout, res.Stderr)
-		return "", "", res.Err
+		// If it fails we try with OPAL_PREFIX set
+		versionCmd.Env = append(versionCmd.Env, "OPAL_PREFIX="+dir)
+		res = versionCmd.Run()
+		if res.Err != nil {
+			log.Printf("unable to run ompi_info: %s; stdout: %s; stderr: %s", res.Err, res.Stdout, res.Stderr)
+			return "", "", res.Err
+		}
 	}
 	version, err := parseOmpiInfoOutputForVersion(res.Stdout)
 	if err != nil {

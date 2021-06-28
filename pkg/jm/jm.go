@@ -168,10 +168,8 @@ func getBatchScriptPath(j *job.Job, sysCfg *sys.Config, batchScriptFilenamePrefi
 
 // TempFile creates a temporary file that is used to store a batch script
 func TempFile(j *job.Job, sysCfg *sys.Config) error {
-	filePrefix := "sbatch-"
-	if j.Partition != "" {
-		filePrefix += j.Partition + "-"
-	}
+	j.SetTimestamp()
+	filePrefix := "sbatch-" + j.ExecutionTimestamp + "-"
 	filePrefix += j.Name
 	var err error
 	j.BatchScript, err = getBatchScriptPath(j, sysCfg, filePrefix)

@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
@@ -216,7 +215,11 @@ func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) 
 		scriptText += slurm.ScriptCmdPrefix + " -N " + strconv.Itoa(j.NNodes) + "\n"
 	}
 
-	scriptText += slurm.ScriptCmdPrefix + " -t 0:30:0\n"
+	if j.MaxExecTime == "" {
+		scriptText += slurm.ScriptCmdPrefix + " -t 0:30:0\n"
+	} else {
+		scriptText += slurm.ScriptCmdPrefix + " -t " + j.MaxExecTime + "\n"
+	}
 
 	/*
 		if j.NP > 0 {
@@ -224,8 +227,7 @@ func generateBatchScriptContent(j *job.Job, sysCfg *sys.Config) (string, error) 
 		}
 	*/
 
-	now := time.Now()
-	j.ExecutionTimestamp = string(now.Format("060102150405"))
+	j.SetTimestamp()
 	scriptText += slurm.ScriptCmdPrefix + " --error=" + getJobErrorFilePath(j, sysCfg) + "\n"
 	scriptText += slurm.ScriptCmdPrefix + " --output=" + getJobOutputFilePath(j, sysCfg) + "\n"
 	scriptText += "\n"
@@ -322,8 +324,10 @@ func generateJobScript(j *job.Job, sysCfg *sys.Config) error {
 		return fmt.Errorf("undefined scratch directory")
 	}
 
-	if j.App.BinPath == "" {
-		return fmt.Errorf("application binary is undefined")
+	// If we know nothing about the app and there is no batch script to use, we do
+	// not know how to launch the application
+	if j.App.BinPath == "" && j.BatchScript == "" {
+		return fmt.Errorf("application binary and batch script are undefined")
 	}
 
 	// Create the batch script if the user did not specify a batch script to use.
