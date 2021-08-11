@@ -31,6 +31,6 @@ func GetConfigureExtraArgs() []string {
 }
 
 // DetectFromDir tries to figure out which version of MPICH is installed in a given directory
-func DetectFromDir(dir string) (string, string, error) {
+func DetectFromDir(dir string, env []string) (string, string, error) {
 	return "", "", fmt.Errorf("not implemented")
 }

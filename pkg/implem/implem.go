@@ -47,14 +47,14 @@ func IsMPI(i *Info) bool {
 // - the implementation (e.g., openmpi) and the function figures out where it is installed
 // - a few other combinations of these to provide a flexible way to handle various implementation of MPI
 // If no suitable implementation can be found, the function returns an error
-func (i *Info) Load() error {
+func (i *Info) Load(env []string) error {
 	if i.InstallDir != "" && (i.ID == "" || i.Version == "") {
 		var err error
-		i.ID, i.Version, err = openmpi.DetectFromDir(i.InstallDir)
+		i.ID, i.Version, err = openmpi.DetectFromDir(i.InstallDir, env)
 		if err == nil {
 			return nil
 		}
-		i.ID, i.Version, err = mpich.DetectFromDir(i.InstallDir)
+		i.ID, i.Version, err = mpich.DetectFromDir(i.InstallDir, env)
 		if err == nil {
 			return nil
 		}

@@ -58,7 +58,7 @@ func parseOmpiInfoOutputForVersion(output string) (string, error) {
 }
 
 // DetectFromDir tries to figure out which version of OpenMPI is installed in a given directory
-func DetectFromDir(dir string) (string, string, error) {
+func DetectFromDir(dir string, env []string) (string, string, error) {
 	targetBin := filepath.Join(dir, "bin", "ompi_info")
 	if !util.FileExists(targetBin) {
 		return "", "", fmt.Errorf("%s does not exist, not an OpenMPI implementation", targetBin)
@@ -67,14 +67,22 @@ func DetectFromDir(dir string) (string, string, error) {
 	var versionCmd advexec.Advcmd
 	versionCmd.BinPath = targetBin
 	versionCmd.CmdArgs = append(versionCmd.CmdArgs, "--version")
-	newLDPath := filepath.Join(dir, "lib") + ":$LD_LIBRARY_PATH"
-	newPath := filepath.Join(dir, "bin") + ":$PATH"
-	versionCmd.Env = []string{"LD_LIBRARY_PATH=" + newLDPath, "PATH=" + newPath}
+	versionCmd.Env = env
+	if env == nil {
+		newLDPath := filepath.Join(dir, "lib") + ":$LD_LIBRARY_PATH"
+		newPath := filepath.Join(dir, "bin") + ":$PATH"
+		versionCmd.Env = append(versionCmd.Env, "LD_LIBRARY_PATH="+newLDPath)
+		versionCmd.Env = append(versionCmd.Env, "PATH="+newPath)
+	}
 	res := versionCmd.Run()
 	if res.Err != nil {
-		// If it fails we try with OPAL_PREFIX set
-		versionCmd.Env = append(versionCmd.Env, "OPAL_PREFIX="+dir)
-		res = versionCmd.Run()
+		// If it fails we try with OPAL_PREFIX set. We create a new command to avoid "exec: already started" issues.
+		var versionCmdWithOpalPrefix advexec.Advcmd
+		versionCmdWithOpalPrefix.BinPath = versionCmd.BinPath
+		versionCmdWithOpalPrefix.CmdArgs = versionCmd.CmdArgs
+		versionCmdWithOpalPrefix.Env = versionCmd.Env
+		versionCmdWithOpalPrefix.Env = append(versionCmd.Env, "OPAL_PREFIX="+dir)
+		res = versionCmdWithOpalPrefix.Run()
 		if res.Err != nil {
 			log.Printf("unable to run ompi_info: %s; stdout: %s; stderr: %s", res.Err, res.Stdout, res.Stderr)
 			return "", "", res.Err
@@ -82,7 +90,7 @@ func DetectFromDir(dir string) (string, string, error) {
 	}
 	version, err := parseOmpiInfoOutputForVersion(res.Stdout)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("parseOmpiInfoOutputForVersion() failed - %w", err)
 	}
 
 	return ID, version, nil
