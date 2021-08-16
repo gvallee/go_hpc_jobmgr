@@ -22,6 +22,9 @@ var partition = flag.String("partition", "", "Name of Slurm partition to use to 
 var scratchDir = flag.String("scratch", "", "Scratch directory to use to execute the test")
 
 func TestSlurmLaunch(t *testing.T) {
+	if *partition == "" {
+		t.Skip("partition not defined, skipping...")
+	}
 	var j job.Job
 	var err error
 	j.App.BinPath, err = exec.LookPath("date")

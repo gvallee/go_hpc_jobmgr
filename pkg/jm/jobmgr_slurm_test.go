@@ -36,6 +36,9 @@ func isDateCmdOutput(output string) bool {
 }
 
 func setupSlurm(t *testing.T) (JM, job.Job, sys.Config, string) {
+	if *partition == "" {
+		t.Skip("no partition specified, skipping...")
+	}
 	loaded, jobmgr := SlurmDetect()
 	if !loaded {
 		t.Skip("slurm cannot be used on this platform")
@@ -134,7 +137,7 @@ func TestSlurmSubmitMPI(t *testing.T) {
 	}
 	var mpiImplem implem.Info
 	mpiImplem.InstallDir = *mpiDir
-	err := mpiImplem.Load()
+	err := mpiImplem.Load(nil)
 	if err != nil {
 		t.Fatalf("unable to detect the MPI implementation in %s: %s", *mpiDir, err)
 	}

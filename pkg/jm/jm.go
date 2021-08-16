@@ -26,6 +26,9 @@ const (
 	// SlurmID is the value set to JM.ID when Slurm shall be used to submit a job
 	SlurmID = "slurm"
 
+	// IntelSlurmID is the value set to JM.ID when Intel-Slurm shall be used to submit a job
+	IntelSlurmID = "intel-slurm"
+
 	// PrunID is the value set to JM.ID when prun shall be used to submit a job
 	PrunID = "prun"
 )
