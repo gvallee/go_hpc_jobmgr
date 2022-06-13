@@ -282,7 +282,11 @@ func setupMpiJob(j *job.Job, sysCfg *sys.Config) error {
 		ppr := j.NP / j.NNodes
 		scriptText += fmt.Sprintf("--map-by ppr:%d:node -rank-by core -bind-to core", ppr)
 	}
-	scriptText += " " + strings.Join(mpirunArgs, " ") + " " + j.App.BinPath + strings.Join(j.App.BinArgs," ") + "\n"
+	scriptText += " " + strings.Join(mpirunArgs, " ") + " " + j.App.BinPath
+	if len(j.App.BinArgs) > 0 {
+		scriptText += " " + strings.Join(j.App.BinArgs, " ")
+	}
+	scriptText += "\n"
 
 	err = ioutil.WriteFile(j.BatchScript, []byte(scriptText), 0644)
 	if err != nil {
