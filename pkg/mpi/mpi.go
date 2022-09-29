@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 
 	"github.com/gvallee/go_exec/pkg/manifest"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/mpich"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/mvapich2"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/app"
@@ -89,4 +91,31 @@ func Detect() (*implem.Info, error) {
 	mpiInfo.InstallDir = filepath.Dir(mpiBinDir)
 
 	return mpiInfo, nil
+}
+
+func DetectFromDir(dir string) (implem.Info, error) {
+	var m implem.Info
+	id, version, err := openmpi.DetectFromDir(dir, nil)
+	if err == nil {
+		m.ID = id
+		m.Version = version
+		m.InstallDir = dir
+		return m, nil
+	}
+	id, version, err = mpich.DetectFromDir(dir, nil)
+	if err == nil {
+		m.ID = id
+		m.Version = version
+		m.InstallDir = dir
+		return m, nil
+	}
+	id, version, err = mvapich2.DetectFromDir(dir, nil)
+	if err == nil {
+		m.ID = id
+		m.Version = version
+		m.InstallDir = dir
+		return m, nil
+	}
+
+	return m, fmt.Errorf("unable to detect any supported MPI implementation from %s", dir)
 }
