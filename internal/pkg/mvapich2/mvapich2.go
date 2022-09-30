@@ -32,7 +32,12 @@ const (
 
 // GetExtraMpirunArgs returns the set of arguments required for the mpirun command for the target platform
 func GetExtraMpirunArgs(sys *sys.Config, netCfg *network.Config, extraArgs []string) []string {
-	return nil
+	extraArgs = append(extraArgs, "-genv")
+	extraArgs = append(extraArgs, "MV2_HOMOGENEOUS_CLUSTER=1")
+	extraArgs = append(extraArgs, "MV2_USE_RDMA_CM=0")
+	extraArgs = append(extraArgs, "MV2_CPU_BINDING_POLICY=hybrid")
+	extraArgs = append(extraArgs, "MV2_HYBRID_BINDING_POLICY=spread")
+	return extraArgs
 }
 
 func parseMVAPICH2InfoOutputForVersion(output string) (string, error) {
@@ -47,13 +52,14 @@ func parseMVAPICH2InfoOutputForVersion(output string) (string, error) {
 
 // DetectFromDir tries to figure out which version of OpenMPI is installed in a given directory
 func DetectFromDir(dir string, env []string) (string, string, error) {
-	targetBin := filepath.Join(dir, "bin", "mpichversion")
+	targetBin := filepath.Join(dir, "bin", "mpirun_rsh")
 	if !util.FileExists(targetBin) {
 		return "", "", fmt.Errorf("%s does not exist, not an MVAPICH2 implementation", targetBin)
 	}
 
 	var versionCmd advexec.Advcmd
 	versionCmd.BinPath = targetBin
+	versionCmd.CmdArgs = append(versionCmd.CmdArgs, "-v")
 	versionCmd.Env = env
 	if env == nil {
 		newLDPath := filepath.Join(dir, "lib") + ":$LD_LIBRARY_PATH"
