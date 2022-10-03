@@ -67,6 +67,7 @@ func DetectFromDir(dir string, env []string) (string, string, error) {
 	var versionCmd advexec.Advcmd
 	versionCmd.BinPath = targetBin
 	versionCmd.CmdArgs = append(versionCmd.CmdArgs, "--version")
+	versionCmd.ExecDir = filepath.Join(dir, "bin")
 	versionCmd.Env = env
 	if env == nil {
 		newLDPath := filepath.Join(dir, "lib") + ":$LD_LIBRARY_PATH"

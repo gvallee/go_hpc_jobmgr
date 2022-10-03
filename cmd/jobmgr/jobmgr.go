@@ -26,7 +26,7 @@ func main() {
 
 	cmdName := filepath.Base(os.Args[0])
 	if *help {
-		fmt.Printf("%s is a command line tool to validate HPC applications and libraries", cmdName)
+		fmt.Printf("%s is a command line tool to query any supported job manager", cmdName)
 		fmt.Println("\nUsage:")
 		flag.PrintDefaults()
 		os.Exit(0)

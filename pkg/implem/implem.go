@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/mpich"
+	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/mvapich2"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
 )
 
@@ -18,6 +19,9 @@ const (
 
 	// MPICH is the identifier for MPICH
 	MPICH = mpich.ID
+
+	// MVAPICH2 us the identifier for MVAPICH2
+	MVAPICH2 = mvapich2.ID
 )
 
 // Info gathers all data about a specific MPI implementation
@@ -34,7 +38,7 @@ type Info struct {
 
 // IsMPI checks if information passed in is an MPI implementation
 func IsMPI(i *Info) bool {
-	if i != nil && (i.ID == OMPI || i.ID == MPICH) {
+	if i != nil && (i.ID == OMPI || i.ID == MPICH || i.ID == MVAPICH2) {
 		return true
 	}
 
