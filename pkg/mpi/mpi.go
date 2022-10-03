@@ -102,14 +102,15 @@ func DetectFromDir(dir string) (implem.Info, error) {
 		m.InstallDir = dir
 		return m, nil
 	}
-	id, version, err = mpich.DetectFromDir(dir, nil)
+	// Always check for MVAPICH before MPICH since they share some code, otherwise MVAPICH is not correctly detected
+	id, version, err = mvapich2.DetectFromDir(dir, nil)
 	if err == nil {
 		m.ID = id
 		m.Version = version
 		m.InstallDir = dir
 		return m, nil
 	}
-	id, version, err = mvapich2.DetectFromDir(dir, nil)
+	id, version, err = mpich.DetectFromDir(dir, nil)
 	if err == nil {
 		m.ID = id
 		m.Version = version
