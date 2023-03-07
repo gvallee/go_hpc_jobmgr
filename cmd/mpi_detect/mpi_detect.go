@@ -33,5 +33,5 @@ func main() {
 		fmt.Printf("unable to detect the MPI implementation installed in %s: %s\n", *dirFlag, err)
 		os.Exit(1)
 	}
-	fmt.Printf("Detected MPI:\n%s %s\n", i.ID, i.Version)
+	fmt.Printf("Detected MPI: %s\nVersion: %s\n", i.ID, i.Version)
 }
