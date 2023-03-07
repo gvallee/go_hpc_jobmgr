@@ -28,6 +28,10 @@ const (
 
 	// ID is the internal ID for MVAPICH2
 	ID = "mvapich2"
+
+	VersionPrefix1 = "MVAPICH2 Version: "
+
+	VersionPrefix2 = "Version: "
 )
 
 // GetExtraMpirunArgs returns the set of arguments required for the mpirun command for the target platform
@@ -45,9 +49,11 @@ func parseMVAPICH2InfoOutputForVersion(output string) (string, error) {
 		return "", fmt.Errorf("empty output from version command")
 	}
 	lines := strings.Split(output, "\n")
-	str := strings.TrimPrefix(lines[0], "MVAPICH2 Version:")
-	str = strings.TrimLeft(str, " ")
-	return str, nil
+	version := lines[0]
+	version = strings.TrimPrefix(version, VersionPrefix1)
+	version = strings.TrimPrefix(version, VersionPrefix2)
+	version = strings.TrimPrefix(version, ID+"-")
+	return version, nil
 }
 
 // DetectFromDir tries to figure out which version of OpenMPI is installed in a given directory
