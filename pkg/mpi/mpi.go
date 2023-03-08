@@ -2,6 +2,7 @@
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
+// Copyright (c) 2001-2023, The Ohio State University. All rights reserved.
 
 package mpi
 
@@ -60,6 +61,9 @@ func GetMpirunArgs(myHostMPICfg *implem.Info, app *app.Info, sysCfg *sys.Config,
 	switch myHostMPICfg.ID {
 	case implem.OMPI:
 		extraArgs = append(extraArgs, openmpi.GetExtraMpirunArgs(sysCfg, netCfg, mpirunArgs)...)
+        break
+    case implem.MVAPICH2:
+        extraArgs = append(extraArgs, mvapich2.GetExtraMpirunArgs(sysCfg, netCfg, mpirunArgs)...)
 	}
 
 	return extraArgs, nil
