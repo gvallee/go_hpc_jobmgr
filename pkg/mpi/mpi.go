@@ -61,9 +61,8 @@ func GetMpirunArgs(myHostMPICfg *implem.Info, app *app.Info, sysCfg *sys.Config,
 	switch myHostMPICfg.ID {
 	case implem.OMPI:
 		extraArgs = append(extraArgs, openmpi.GetExtraMpirunArgs(sysCfg, netCfg, mpirunArgs)...)
-        break
-    case implem.MVAPICH2:
-        extraArgs = append(extraArgs, mvapich2.GetExtraMpirunArgs(sysCfg, netCfg, mpirunArgs)...)
+	case implem.MVAPICH2:
+		extraArgs = append(extraArgs, mvapich2.GetExtraMpirunArgs(sysCfg, netCfg, mpirunArgs)...)
 	}
 
 	return extraArgs, nil

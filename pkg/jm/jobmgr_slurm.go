@@ -19,7 +19,6 @@ import (
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
-    "github.com/gvallee/go_hpc_jobmgr/internal/pkg/mvapich2"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/slurm"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
