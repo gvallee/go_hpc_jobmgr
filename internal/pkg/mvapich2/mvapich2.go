@@ -53,6 +53,8 @@ func parseMVAPICH2InfoOutputForVersion(output string) (string, error) {
 	version = strings.TrimPrefix(version, VersionPrefix1)
 	version = strings.TrimPrefix(version, VersionPrefix2)
 	version = strings.TrimPrefix(version, ID+"-")
+	version = strings.ReplaceAll(version, "\t", "")
+	version = strings.ReplaceAll(version, " ", "")
 	return version, nil
 }
 
