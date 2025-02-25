@@ -1,5 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2025, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -8,7 +8,6 @@ package jm
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
+	"github.com/gvallee/go_hpcjob/pkg/hpcjob"
 	"github.com/gvallee/go_util/pkg/util"
 )
 
@@ -41,45 +41,6 @@ type Environment struct {
 	//mpiBin string
 }
 
-type JobStatus struct {
-	Code int
-	Str  string
-}
-
-const (
-	JOB_STATUS_UNKNOWN = iota
-	JOB_STATUS_PENDING
-	JOB_STATUS_QUEUED
-	JOB_STATUS_RUNNING
-	JOB_STATUS_STOP
-	JOB_STATUS_DONE
-)
-
-var StatusUnknown = JobStatus{
-	Code: JOB_STATUS_UNKNOWN,
-	Str:  "UNKNOWN",
-}
-var StatusPending = JobStatus{
-	Code: JOB_STATUS_PENDING,
-	Str:  "PENDING",
-}
-var StatusQueued = JobStatus{
-	Code: JOB_STATUS_QUEUED,
-	Str:  "QUEUED",
-}
-var StatusRunning = JobStatus{
-	Code: JOB_STATUS_RUNNING,
-	Str:  "RUNNING",
-}
-var StatusStop = JobStatus{
-	Code: JOB_STATUS_STOP,
-	Str:  "STOPPED",
-}
-var StatusDone = JobStatus{
-	Code: JOB_STATUS_DONE,
-	Str:  "DONE",
-}
-
 // Loader checks whether a giv job manager is applicable or not
 type Loader interface {
 	Load() bool
@@ -92,7 +53,7 @@ type LoadFn func(jobmgr *JM, sysCfg *sys.Config) error
 type SubmitFn func(j *job.Job, jobmgr *JM, sysCfg *sys.Config) advexec.Result
 
 // JobStatusFn is a "function pointer" that lets us query the status of a job
-type JobStatusFn func(jobmgr *JM, jobIDs []int) ([]JobStatus, error)
+type JobStatusFn func(jobmgr *JM, jobIDs []int) ([]hpcjob.Status, error)
 
 // NumJobsFn is a "function pointer" that lets us know how many jobs the job manager is currently handling
 type NumJobsFn func(jobmgr *JM, partition string, user string) (int, error)
@@ -149,7 +110,7 @@ func getBatchScriptPath(j *job.Job, sysCfg *sys.Config, batchScriptFilenamePrefi
 	}
 
 	if sysCfg.Persistent == "" {
-		f, err := ioutil.TempFile(sysCfg.ScratchDir, batchScriptFilenamePrefix+"-")
+		f, err := os.CreateTemp(sysCfg.ScratchDir, batchScriptFilenamePrefix+"-")
 		if err != nil {
 			return "", fmt.Errorf("failed to create temporary file: %s", err)
 		}
@@ -201,7 +162,7 @@ func (jobmgr *JM) Submit(j *job.Job, sysCfg *sys.Config) advexec.Result {
 	return jobmgr.submitJM(j, jobmgr, sysCfg)
 }
 
-func (jobmgr *JM) JobStatus(jobIDs []int) ([]JobStatus, error) {
+func (jobmgr *JM) JobStatus(jobIDs []int) ([]hpcjob.Status, error) {
 	if jobmgr.jobStatusJM == nil {
 		return nil, fmt.Errorf("not implemented")
 	}

@@ -1,4 +1,8 @@
 github.com/gvallee/go_exec v1.2.2 h1:0gWUN/zHAl6bZiLBSNAtBtwD1GvUBOavpM9Lnp7ke+A=
 github.com/gvallee/go_exec v1.2.2/go.mod h1:lmOyPu3oseS+RDHpd/AEJD4x/XWEPVYsQ+A++uoeLdM=
+github.com/gvallee/go_hpcjob v1.0.0 h1:Bh07K7gw8QgR4PptXlM8qspNzzqOVp0FCZP4uBqjL2Q=
+github.com/gvallee/go_hpcjob v1.0.0/go.mod h1:C0ThLxuBDWC7aZqTUnj5wNuiKbnautlSVxaE0kiHw8k=
+github.com/gvallee/go_slurm v1.0.0 h1:6YVwwJrriCQ/FfpsfzmQUtSXvxL2BF0189nzLvHxokM=
+github.com/gvallee/go_slurm v1.0.0/go.mod h1:C7iK0ezZ1krasfSE32vNX6ViY6x9E5Az+Drt7JYkEQU=
 github.com/gvallee/go_util v1.6.0 h1:5DePkZ1UPXtAzbX54RMDHDzUchc4d/ZW7AkXZ4ubCz0=
 github.com/gvallee/go_util v1.6.0/go.mod h1:fTexpwdH/n05Ziu0TXJIQsr7E+46QpBxNdeOOsyC0/s=
