@@ -1,5 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
-// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2021-2025, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -8,6 +8,7 @@ package jm
 
 import (
 	"flag"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -88,12 +89,11 @@ func runAndCheckJob(t *testing.T, jobmgr JM, j job.Job, sysCfg sys.Config) {
 			failed = true
 			t.Logf("failed to open batch script %s: %s", j.BatchScript, err)
 		} else {
-			b, err := ioutil.ReadAll(f)
+			b, err := io.ReadAll(f)
 			if err != nil {
 				t.Logf("failed to read the batch script: %s", err)
 			}
-			t.Logf("Content of the batch script:\n")
-			t.Logf(string(b))
+			t.Logf("Content of the batch script:\n" + string(b))
 		}
 		defer f.Close()
 	}

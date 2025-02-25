@@ -1,5 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2025, NVIDIA CORPORATION. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
 // rights to use or distribute this software.
@@ -16,8 +16,26 @@ import (
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
+	"github.com/gvallee/go_hpcjob/pkg/hpcjob"
+	"github.com/gvallee/go_slurm/pkg/slurm"
 	"github.com/gvallee/go_util/pkg/util"
 )
+
+func intelSlurmGetJobStatus(jm *JM, jobIds []int) ([]hpcjob.Status, error) {
+	if jm == nil {
+		return nil, fmt.Errorf("undefined job manager object")
+	}
+
+	return slurm.JobStatus(jobIds)
+}
+
+func intelSlurmGetNumJobs(jm *JM, partitionName string, user string) (int, error) {
+	if jm == nil {
+		return 0, fmt.Errorf("undefined job manager object")
+	}
+
+	return slurm.GetNumJobs(partitionName, user)
+}
 
 // IntelSlurmDetect is the function used by our job management framework to figure out if Intel-Slurm can be used and
 // if so return a JM structure with all the "function pointers" to interact with Slurm through our generic
@@ -41,8 +59,8 @@ func IntelSlurmDetect() (bool, JM) {
 	jm.ID = IntelSlurmID
 	jm.submitJM = intelSlurmSubmit
 	jm.loadJM = intelSlurmLoad
-	jm.jobStatusJM = slurmJobStatus
-	jm.numJobsJM = slurmGetNumJobs
+	jm.jobStatusJM = intelSlurmGetJobStatus
+	jm.numJobsJM = intelSlurmGetNumJobs
 	jm.postRunJM = slurmPostJob
 
 	return true, jm

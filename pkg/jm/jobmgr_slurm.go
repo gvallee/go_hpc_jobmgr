@@ -1,5 +1,5 @@
 // Copyright (c) 2019, Sylabs Inc. All rights reserved.
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2025, NVIDIA CORPORATION. All rights reserved.
 // Copyright (c) 2001-2023, The Ohio State University. All rights reserved.
 // This software is licensed under a 3-clause BSD license. Please consult the
 // LICENSE.md file distributed with the sources of this project regarding your
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -19,10 +20,11 @@ import (
 	"github.com/gvallee/go_exec/pkg/advexec"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/network"
 	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/openmpi"
-	"github.com/gvallee/go_hpc_jobmgr/internal/pkg/slurm"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/job"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/mpi"
 	"github.com/gvallee/go_hpc_jobmgr/pkg/sys"
+	"github.com/gvallee/go_hpcjob/pkg/hpcjob"
+	"github.com/gvallee/go_slurm/pkg/slurm"
 	"github.com/gvallee/go_util/pkg/util"
 )
 
@@ -30,106 +32,40 @@ const (
 	slurmJobIDPrefix = "Submitted batch job "
 )
 
-func removeFromSlice(a []string, idx int) []string {
-	return append(a[:idx], a[idx+1:]...)
+func slurmGetJobStatus(jm *JM, jobIds []int) ([]hpcjob.Status, error) {
+	if jm == nil {
+		return nil, fmt.Errorf("undefined job manager object")
+	}
+
+	return slurm.JobStatus(jobIds)
 }
 
-func getSlurmJobStatus(jobID int) (JobStatus, error) {
-	var cmd advexec.Advcmd
-	var err error
-	cmd.BinPath, err = exec.LookPath("squeue")
+func slurmGetNumJobs(jm *JM, partitionName string, user string) (int, error) {
+	if jm == nil {
+		return 0, fmt.Errorf("undefined job manager object")
+	}
+
+	return slurm.GetNumJobs(partitionName, user)
+}
+
+// Create a new manifest
+func Create(filepath string, entries []string) error {
+	f, err := os.Create(filepath)
 	if err != nil {
-		return StatusUnknown, err
-	}
-	cmd.CmdArgs = []string{"-j", strconv.Itoa(jobID), "--format=%t"}
-	res := cmd.Run()
-	if res.Err != nil {
-		// if it fails it might mean the job is done
-		res.Stderr = strings.TrimRight(res.Stderr, "\n")
-		if strings.HasSuffix(res.Stderr, "Invalid job id specified") {
-			return StatusDone, nil
-		}
-		return StatusUnknown, res.Err
+		return fmt.Errorf("failed to create %s: %s", filepath, err)
 	}
 
-	lines := strings.Split(res.Stdout, "\n")
-	// We do not care about the first lines, just the Slurm header and status that are not
-	// relevant to us
-	for i := 0; i < len(lines); i++ {
-		if lines[i] == "" {
-			lines = removeFromSlice(lines, i)
-		}
-	}
-	rawStatus := strings.TrimRight(lines[len(lines)-1], "\n")
-	switch rawStatus {
-	case "R":
-		return StatusRunning, nil
-	case "PD":
-		return StatusQueued, nil
-	case "ST":
-		// Try to get more details with a sacct command
-		var sacctCmd advexec.Advcmd
-		var err error
-		sacctCmd.BinPath, err = exec.LookPath("sacct")
-		if err != nil {
-			return StatusUnknown, err
-		}
-		sacctCmd.CmdArgs = []string{"-j", strconv.Itoa(jobID), "--format=state"}
-		resSacctCmd := sacctCmd.Run()
-		if resSacctCmd.Err == nil {
-			output := strings.Split(resSacctCmd.Stdout, "\n")
-			if len(output) > 2 {
-				if strings.Contains(output[2], "COMPLETED") {
-					return StatusDone, nil
-				}
-			}
-		}
-		return StatusStop, nil
-	}
-
-	return StatusUnknown, nil
-}
-
-func slurmGetNumJobs(jobmgr *JM, partitionName string, user string) (int, error) {
-	var cmd advexec.Advcmd
-	var err error
-	cmd.BinPath, err = exec.LookPath("squeue")
+	_, err = f.WriteString(strings.Join(entries, "\n"))
 	if err != nil {
-		return -1, err
-	}
-	cmd.CmdArgs = []string{"-p", partitionName, "-u", user}
-	res := cmd.Run()
-	if res.Err != nil {
-		return -1, res.Err
+		return fmt.Errorf("failed to write to %s: %s", filepath, err)
 	}
 
-	lines := strings.Split(res.Stdout, "\n")
-	numJobs := 0
-	for _, line := range lines {
-		if strings.Contains(line, "JOBID") || line == "" {
-			continue
-		}
-		numJobs++
+	err = os.Chmod(filepath, 0444)
+	if err != nil {
+		return fmt.Errorf("failed to set manifest to ready only: %s", err)
 	}
 
-	return numJobs, nil
-}
-
-func slurmJobStatus(jobmgr *JM, jobIDs []int) ([]JobStatus, error) {
-	var s []JobStatus
-	if jobmgr == nil {
-		return nil, fmt.Errorf("undefined job manager")
-	}
-
-	for _, jobID := range jobIDs {
-		jobStatus, err := getSlurmJobStatus(jobID)
-		if err != nil {
-			return nil, err
-		}
-		s = append(s, jobStatus)
-	}
-
-	return s, nil
+	return nil
 }
 
 // SlurmDetect is the function used by our job management framework to figure out if Slurm can be used and
@@ -148,7 +84,7 @@ func SlurmDetect() (bool, JM) {
 	jm.ID = SlurmID
 	jm.submitJM = slurmSubmit
 	jm.loadJM = slurmLoad
-	jm.jobStatusJM = slurmJobStatus
+	jm.jobStatusJM = slurmGetJobStatus
 	jm.numJobsJM = slurmGetNumJobs
 	jm.postRunJM = slurmPostJob
 
@@ -158,7 +94,7 @@ func SlurmDetect() (bool, JM) {
 // slurmGetOutput reads the content of the Slurm output file that is associated to a job
 func slurmGetOutput(j *job.Job, sysCfg *sys.Config) string {
 	outputFile := getJobOutputFilePath(j, sysCfg)
-	output, err := ioutil.ReadFile(outputFile)
+	output, err := os.ReadFile(outputFile)
 	if err != nil {
 		return ""
 	}
@@ -169,7 +105,7 @@ func slurmGetOutput(j *job.Job, sysCfg *sys.Config) string {
 // slurmGetError reads the content of the Slurm error file that is associated to a job
 func slurmGetError(j *job.Job, sysCfg *sys.Config) string {
 	errorFile := getJobErrorFilePath(j, sysCfg)
-	errorTxt, err := ioutil.ReadFile(errorFile)
+	errorTxt, err := os.ReadFile(errorFile)
 	if err != nil {
 		return ""
 	}
@@ -309,7 +245,7 @@ func setupNonMpiJob(j *job.Job, sysCfg *sys.Config) error {
 	}
 	scriptText += "\n" + j.App.BinPath + "\n"
 
-	err = ioutil.WriteFile(j.BatchScript, []byte(scriptText), 0644)
+	err = os.WriteFile(j.BatchScript, []byte(scriptText), 0644)
 	if err != nil {
 		return fmt.Errorf("unable to write to file %s: %s", j.BatchScript, err)
 	}
